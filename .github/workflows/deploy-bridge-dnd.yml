@@ -1,0 +1,49 @@
+name: Deploy DnD Bridge
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/**'
+      - 'bridges/dnd/**'
+      - '.github/workflows/deploy-bridge-dnd.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment at a time; cancel in-flight if a new push arrives.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Build SDK
+        run: npm ci && npm run build
+
+      - name: Build bridge
+        working-directory: bridges/dnd
+        # Use npm install (not ci) — lock file uses file:../../ which CI resolves correctly
+        # after the SDK is built above.
+        run: npm install && npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: bridges/dnd/dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
