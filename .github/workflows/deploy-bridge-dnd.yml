@@ -41,9 +41,12 @@ jobs:
         # after the SDK is built above.
         run: npm install && npm run build
 
+      - name: Stage for Pages
+        run: mkdir -p _site/dnd/obr && cp -r bridges/dnd/dist/. _site/dnd/obr/
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: bridges/dnd/dist
+          path: _site
 
       - id: deploy
         uses: actions/deploy-pages@v4

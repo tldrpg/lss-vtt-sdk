@@ -4,11 +4,11 @@
   "manifest_version": 1,
   "description": "D&D 5e character sheet from Long Story Short, embedded via postMessage bridge",
   "author": "Long Story Short",
-  "icon": "/icon.svg",
+  "icon": "/lss-vtt-sdk/dnd/obr/icon.svg",
   "action": {
     "title": "Character Sheet",
-    "icon": "/icon-popover.svg",
-    "popover": "/",
+    "icon": "/lss-vtt-sdk/dnd/obr/icon-popover.svg",
+    "popover": "/lss-vtt-sdk/dnd/obr/",
     "width": 400,
     "height": 1200
   }
