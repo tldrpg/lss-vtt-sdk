@@ -84,9 +84,15 @@ sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-san
 
 `allow-same-origin` is required so the sheet can read its auth cookie and access localStorage. Without it the sheet gets an opaque origin and auth breaks.
 
-## Reference bridge
+## Reference bridge — Owlbear Rodeo (D&D 5e)
 
-A ready-to-adapt React bridge page for Owlbear Rodeo lives in [`bridges/owlbear/index.tsx`](bridges/owlbear/index.tsx). It is NOT published to npm — deploy it as a separate page from your own infrastructure.
+A deployable vanilla-TS bridge for Owlbear Rodeo lives in [`bridges/dnd/`](bridges/dnd/). It is automatically deployed to GitHub Pages on every push to `master`.
+
+**Live manifest:** `https://bridge.longstoryshort.app/dnd/obr/manifest.json`
+
+To install the extension in OBR: Extensions → Add extension → paste the manifest URL above.
+
+To adapt for your own VTT: copy `bridges/dnd/src/main.ts`, swap `OwlbearAdapter` for your own `VTTAdapter` implementation, and deploy as a static page.
 
 ## Protocol events
 
