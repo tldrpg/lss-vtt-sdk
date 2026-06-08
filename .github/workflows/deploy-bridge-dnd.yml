@@ -42,7 +42,10 @@ jobs:
         run: npm install && npm run build
 
       - name: Stage for Pages
-        run: mkdir -p _site/dnd/obr && cp -r bridges/dnd/dist/. _site/dnd/obr/
+        run: |
+          mkdir -p _site/dnd/obr
+          cp -r bridges/dnd/dist/. _site/dnd/obr/
+          echo "bridge.longstoryshort.app" > _site/CNAME
 
       - uses: actions/upload-pages-artifact@v3
         with:
