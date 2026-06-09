@@ -30,7 +30,12 @@ let previewTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function init() {
     if (!window.OBR) {
-        const parentOBR = (window.parent as any)?.OBR;
+        let parentOBR: unknown = null;
+        try {
+            parentOBR = (window.parent as any)?.OBR;
+        } catch {
+            // cross-origin parent (production OBR) — expected, fall through to SDK import
+        }
         if (parentOBR) {
             (window as any).OBR = parentOBR;
         } else {
