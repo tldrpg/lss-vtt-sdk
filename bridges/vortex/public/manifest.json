@@ -2,14 +2,14 @@
   "name": "LSS Vortex",
   "version": "0.1.0",
   "manifest_version": 1,
-  "description": "Vortex room hub and roll ticker from Long Story Short",
+  "description": "Vortex room hub and roll logger by Long Story Short",
   "author": "Long Story Short",
   "icon": "/vortex/obr/icon.svg",
   "action": {
     "title": "Vortex",
-    "icon": "/vortex/obr/icon.svg",
+    "icon": "/vortex/obr/icon-popover.svg",
     "popover": "/vortex/obr/",
     "width": 400,
-    "height": 1200
+    "height": 600
   }
 }

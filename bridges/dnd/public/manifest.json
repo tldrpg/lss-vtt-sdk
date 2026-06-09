@@ -1,12 +1,12 @@
 {
-  "name": "LSS Character Sheet",
+  "name": "LSS 5e Character Sheet",
   "version": "0.1.0",
   "manifest_version": 1,
-  "description": "D&D 5e character sheet from Long Story Short, embedded via postMessage bridge",
+  "description": "D&D 5e character sheet by Long Story Short, embedded via iframe bridge",
   "author": "Long Story Short",
   "icon": "/dnd/obr/icon.svg",
   "action": {
-    "title": "Character Sheet",
+    "title": "5e Character Sheet",
     "icon": "/dnd/obr/icon-popover.svg",
     "popover": "/dnd/obr/",
     "width": 400,
