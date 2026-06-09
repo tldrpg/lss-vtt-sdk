@@ -1,4 +1,4 @@
-name: Deploy DnD Bridge
+name: Deploy Bridges
 
 on:
   push:
@@ -6,7 +6,8 @@ on:
     paths:
       - 'src/**'
       - 'bridges/dnd/**'
-      - '.github/workflows/deploy-bridge-dnd.yml'
+      - 'bridges/vortex/**'
+      - '.github/workflows/deploy-bridges.yml'
 
 permissions:
   contents: read
@@ -35,16 +36,22 @@ jobs:
       - name: Build SDK
         run: npm ci && npm run build
 
-      - name: Build bridge
+      - name: Build DnD bridge
         working-directory: bridges/dnd
         # Use npm install (not ci) — lock file uses file:../../ which CI resolves correctly
         # after the SDK is built above.
         run: npm install && npm run build
 
+      - name: Build Vortex bridge
+        working-directory: bridges/vortex
+        run: npm install && npm run build
+
       - name: Stage for Pages
         run: |
           mkdir -p _site/dnd/obr
+          mkdir -p _site/vortex/obr
           cp -r bridges/dnd/dist/. _site/dnd/obr/
+          cp -r bridges/vortex/dist/. _site/vortex/obr/
           echo "bridge.longstoryshort.app" > _site/CNAME
 
       - uses: actions/upload-pages-artifact@v3
