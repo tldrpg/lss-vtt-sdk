@@ -1,52 +1,30 @@
 import {
     VORTEX_ORIGIN,
-    VORTEX_COLOR_SCHEME,
     ROOM_METADATA_KEY,
     LOGGER_POPOVER_ID,
     IFRAME_SANDBOX,
     PILL_HEIGHT,
     BRIDGE_CHANNEL,
     isVortexMessage,
+    buildVortexUrl,
+    resolveOBR,
 } from './shared';
 import type { BridgeMessage } from './shared';
 
-function buildVortexUrl(path: string): string {
-    const url = new URL(path, VORTEX_ORIGIN);
-    if (VORTEX_COLOR_SCHEME) url.searchParams.set('colorScheme', VORTEX_COLOR_SCHEME);
-    return url.href;
-}
-
 let loggerOpen = false;
 
-// In production, OBR is injected into window by OBR itself
-// In test, window.OBR is our mock
 declare global { interface Window { OBR: any; } }
 
 async function init() {
-    if (!window.OBR) {
-        let parentOBR: unknown = null;
-        try {
-            parentOBR = (window.parent as any)?.OBR;
-        } catch {
-            // cross-origin parent (production OBR) — expected, fall through to SDK import
-        }
-        if (parentOBR) {
-            (window as any).OBR = parentOBR;
-        } else {
-            const { default: RealOBR } = await import('@owlbear-rodeo/sdk');
-            (window as any).OBR = RealOBR;
-        }
-    }
+    await resolveOBR();
 
     console.log('[Vortex Bridge] Initializing...');
-    await window.OBR.onReady();
+    // OBR.onReady() takes a callback; wrap it in a Promise so we wait until
+    // the OBR_READY handshake completes and room API calls become available.
+    await new Promise<void>((resolve) => window.OBR.onReady(resolve));
     console.log('[Vortex Bridge] OBR is ready');
 
-    const contentEl = document.getElementById('content');
-
-    if (!contentEl) {
-        throw new Error('Required DOM elements not found');
-    }
+    const contentEl = document.getElementById('content')!;
 
     // Relative to the action page (index.html), not the JS bundle in assets/
     const loggerUrl = new URL('logger.html', window.location.href).href;
@@ -83,33 +61,29 @@ async function init() {
     }
 
     async function renderContent() {
-        try {
-            const room = (await window.OBR.room.getMetadata()) as Record<
-                string,
-                unknown
-            >;
-            const roomId = room[ROOM_METADATA_KEY] as string | undefined;
-            const targetUrl = roomId
-                ? buildVortexUrl(`/room/${roomId}`)
-                : buildVortexUrl('/iframe/');
+        const room = (await window.OBR.room.getMetadata()) as Record<
+            string,
+            unknown
+        >;
+        const roomId = room[ROOM_METADATA_KEY] as string | undefined;
+        const targetUrl = roomId
+            ? buildVortexUrl(`/room/${roomId}`)
+            : buildVortexUrl('/iframe/');
 
-            const existing = contentEl.querySelector('iframe') as HTMLIFrameElement | null;
-            if (existing && existing.src === targetUrl) {
-                return;
-            }
-
-            contentEl.innerHTML = '';
-
-            const iframe = document.createElement('iframe');
-            iframe.src = targetUrl;
-            iframe.sandbox.add(...IFRAME_SANDBOX.split(' '));
-            iframe.allow = 'clipboard-write';
-            contentEl.appendChild(iframe);
-
-            await syncLogger(roomId);
-        } catch (error) {
-            console.error('[Vortex Bridge] Error rendering content:', error);
+        const existing = contentEl.querySelector('iframe') as HTMLIFrameElement | null;
+        if (existing && existing.src === targetUrl) {
+            return;
         }
+
+        contentEl.innerHTML = '';
+
+        const iframe = document.createElement('iframe');
+        iframe.src = targetUrl;
+        iframe.sandbox.add(...IFRAME_SANDBOX.split(' '));
+        iframe.allow = 'clipboard-write';
+        contentEl.appendChild(iframe);
+
+        await syncLogger(roomId);
     }
 
     window.addEventListener('message', (event) => {
@@ -138,11 +112,9 @@ async function init() {
         }
     });
 
-    // Wait for OBR to be fully ready before using room API
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Initial render
-    await renderContent();
+    await renderContent().catch((error) => {
+        console.error('[Vortex Bridge] Error rendering content:', error);
+    });
 
     // Subscribe to metadata changes
     window.OBR.room.onMetadataChange(() => {

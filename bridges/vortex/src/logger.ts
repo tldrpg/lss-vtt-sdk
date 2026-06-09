@@ -1,19 +1,14 @@
 import {
     VORTEX_ORIGIN,
-    VORTEX_COLOR_SCHEME,
     ROOM_METADATA_KEY,
     IFRAME_SANDBOX,
     PILL_HEIGHT,
     BRIDGE_CHANNEL,
     isVortexMessage,
+    buildVortexUrl,
+    resolveOBR,
 } from './shared';
 import type { BridgeMessage, RollSummary } from './shared';
-
-function buildVortexUrl(path: string): string {
-    const url = new URL(path, VORTEX_ORIGIN);
-    if (VORTEX_COLOR_SCHEME) url.searchParams.set('colorScheme', VORTEX_COLOR_SCHEME);
-    return url.href;
-}
 
 declare global { interface Window { OBR: any; } }
 
@@ -29,23 +24,14 @@ let lastContentH = MAX_HEIGHT - PILL_HEIGHT;
 let previewTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function init() {
-    if (!window.OBR) {
-        let parentOBR: unknown = null;
-        try {
-            parentOBR = (window.parent as any)?.OBR;
-        } catch {
-            // cross-origin parent (production OBR) — expected, fall through to SDK import
-        }
-        if (parentOBR) {
-            (window as any).OBR = parentOBR;
-        } else {
-            const { default: RealOBR } = await import('@owlbear-rodeo/sdk');
-            (window as any).OBR = RealOBR;
-        }
-    }
+    await resolveOBR();
 
     console.log('[Vortex Logger] Initializing...');
-    await window.OBR.onReady();
+    // OBR.onReady() takes a callback; wrap it in a Promise so we wait until
+    // the OBR_READY handshake completes and room API calls become available.
+    await new Promise<void>((resolve) => window.OBR.onReady(resolve));
+
+    document.documentElement.style.setProperty('--pill-height', `${PILL_HEIGHT}px`);
 
     const contentEl     = document.getElementById('content')!;
     const settingsEl    = document.getElementById('settings')!;
@@ -99,7 +85,10 @@ async function init() {
 
         if (next === 'logger') { unreadCount = 0; updateBadge(); }
         if (next === 'settings') renderSettings().catch(console.error);
-        if (next === 'preview' && summary) renderPreviewCard(summary);
+        if (next === 'preview') {
+            if (summary) renderPreviewCard(summary);
+            previewTimer = setTimeout(() => { previewTimer = null; applyPanel(null); }, PREVIEW_DURATION);
+        }
 
         const height = next === 'preview'
             ? PREVIEW_HEIGHT
@@ -147,63 +136,59 @@ async function init() {
             </div>
             ${roomId ? '<button class="reset-btn">Отвязать комнату</button>' : ''}
         `;
-
-        settingsEl.querySelector('.reset-btn')?.addEventListener('click', async () => {
-            try {
-                await window.OBR.room.setMetadata({ [ROOM_METADATA_KEY]: undefined });
-            } catch (err) {
-                console.error('[Vortex Logger] Failed to reset room:', err);
-            }
-        });
     }
 
     // ── Vortex iframe ─────────────────────────────────────────────────────────
 
     async function renderContent() {
-        try {
-            const room = (await window.OBR.room.getMetadata()) as Record<string, unknown>;
-            const roomId = room[ROOM_METADATA_KEY] as string | undefined;
-            const targetUrl = roomId ? buildVortexUrl(`/room/${roomId}/logger`) : null;
+        const room = (await window.OBR.room.getMetadata()) as Record<string, unknown>;
+        const roomId = room[ROOM_METADATA_KEY] as string | undefined;
+        const targetUrl = roomId ? buildVortexUrl(`/room/${roomId}/logger`) : null;
 
-            const existing = contentEl.querySelector('iframe') as HTMLIFrameElement | null;
-            if ((existing?.src ?? null) === targetUrl) return;
+        const existing = contentEl.querySelector('iframe') as HTMLIFrameElement | null;
+        if ((existing?.src ?? null) === targetUrl) return;
 
-            contentEl.innerHTML = '';
-            if (targetUrl) {
-                const iframe = document.createElement('iframe');
-                iframe.src = targetUrl;
-                iframe.sandbox.add(...IFRAME_SANDBOX.split(' '));
-                iframe.allow = 'clipboard-write';
-                contentEl.appendChild(iframe);
-            }
-
-            if (panel === 'settings') renderSettings().catch(console.error);
-        } catch (err) {
-            console.error('[Vortex Logger] Error rendering content:', err);
+        contentEl.innerHTML = '';
+        if (targetUrl) {
+            const iframe = document.createElement('iframe');
+            iframe.src = targetUrl;
+            iframe.sandbox.add(...IFRAME_SANDBOX.split(' '));
+            iframe.allow = 'clipboard-write';
+            contentEl.appendChild(iframe);
         }
+
+        if (panel === 'settings') renderSettings().catch(console.error);
     }
 
     // ── Event listeners ───────────────────────────────────────────────────────
 
+    // Delegated handler for the "Отвязать" button rendered inside settingsEl.
+    settingsEl.addEventListener('click', async (e) => {
+        if (!(e.target as HTMLElement).matches('.reset-btn')) return;
+        try {
+            await window.OBR.room.setMetadata({ [ROOM_METADATA_KEY]: undefined });
+        } catch (err) {
+            console.error('[Vortex Logger] Failed to reset room:', err);
+        }
+    });
+
     window.addEventListener('message', (event) => {
         if (event.origin !== VORTEX_ORIGIN) return;
+        if (!isVortexMessage(event.data)) return;
 
-        if (event.data?.type === 'vortex:loggerResize') {
-            const h = event.data.height as number;
-            if (typeof h === 'number' && h > 0) {
+        if (event.data.type === 'vortex:loggerResize') {
+            const h = event.data.height;
+            if (h > 0) {
                 lastContentH = h;
                 if (panel === 'logger' || panel === 'settings') sendResize(expandedHeight());
             }
             return;
         }
 
-        if (!isVortexMessage(event.data)) return;
-
         if (event.data.type === 'vortex:newRoll') {
             if (panel !== 'logger') { unreadCount++; updateBadge(); }
             if (panel === null || panel === 'preview') {
                 applyPanel('preview', event.data.summary);
-                previewTimer = setTimeout(() => { previewTimer = null; applyPanel(null); }, PREVIEW_DURATION);
             }
         }
     });
@@ -219,11 +204,14 @@ async function init() {
 
     // ── Boot ──────────────────────────────────────────────────────────────────
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    await renderContent();
+    await renderContent().catch((err) => {
+        console.error('[Vortex Logger] Error rendering content:', err);
+    });
 
     window.OBR.room.onMetadataChange(() => {
-        renderContent().catch(console.error);
+        renderContent().catch((err) => {
+            console.error('[Vortex Logger] Metadata change handler error:', err);
+        });
     });
 }
 

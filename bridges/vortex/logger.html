@@ -37,9 +37,9 @@
       /* ── Logger content (Vortex iframe) ── */
       .content {
         position: absolute;
-        bottom: 44px;
+        bottom: var(--pill-height, 44px);
         right: 0;
-        height: calc(100% - 44px);
+        height: calc(100% - var(--pill-height, 44px));
         width: 100%;
         display: none;
         flex-direction: column;
@@ -58,7 +58,7 @@
       /* ── Settings panel ── */
       .settings {
         position: absolute;
-        bottom: 44px;
+        bottom: var(--pill-height, 44px);
         right: 0;
         height: auto;
         width: 100%;
@@ -121,7 +121,7 @@
       /* ── Preview card ── */
       .preview-card {
         position: absolute;
-        bottom: 44px;
+        bottom: var(--pill-height, 44px);
         right: 0;
         width: 100%;
         padding: 8px 10px;
