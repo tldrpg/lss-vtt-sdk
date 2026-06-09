@@ -14,17 +14,18 @@ export const LOGGER_POPOVER_ID = 'rodeo.lss/vortex-logger';
 export const PILL_HEIGHT = 44;
 
 /**
- * Pins an OBR popover to the bottom-right corner of the viewport.
+ * Pins an OBR popover just above the bottom-right toolbar.
  *
- * OBR's `anchorPosition` is a `{ left, top }` coordinate (not a named enum).
- * We anchor to the viewport's bottom-right corner and set `transformOrigin`
- * so the popover grows up-and-left from that point. Computed at call time so
- * it follows viewport resizes rather than capturing stale dimensions.
+ * `#grid-button` is the OBR grid toggle — a stable element always present in
+ * the bottom-right corner of the OBR UI. Anchoring to its TOP-RIGHT corner
+ * with the popover's BOTTOM-RIGHT corner makes the logger grow upward from
+ * the toolbar, flush with the right edge.
  */
 export function loggerPopoverAnchor() {
     return {
-        anchorReference: 'POSITION' as const,
-        anchorPosition: { left: window.innerWidth, top: window.innerHeight },
+        anchorReference: 'ELEMENT' as const,
+        anchorElementId: 'grid-button',
+        anchorOrigin: { horizontal: 'RIGHT' as const, vertical: 'TOP' as const },
         transformOrigin: { horizontal: 'RIGHT' as const, vertical: 'BOTTOM' as const },
     };
 }

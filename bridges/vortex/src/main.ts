@@ -30,32 +30,33 @@ async function init() {
     // Relative to the action page (index.html), not the JS bundle in assets/
     const loggerUrl = new URL('logger.html', window.location.href).href;
 
+    function loggerPopoverConfig(height: number) {
+        return {
+            id: LOGGER_POPOVER_ID,
+            url: loggerUrl,
+            width: 380,
+            height,
+            disableClickAway: true,
+            hidePaper: true,
+            ...loggerPopoverAnchor(),
+        };
+    }
+
     // Logger resizes itself via BroadcastChannel — main frame calls OBR on its behalf
     // because OBR.popover.open from within a popover frame may be a no-op.
     const bridgeChannel = new BroadcastChannel(BRIDGE_CHANNEL);
     bridgeChannel.addEventListener('message', (event: MessageEvent<BridgeMessage>) => {
         if (event.data.type === 'logger:resize') {
-            window.OBR.popover.open({
-                id: LOGGER_POPOVER_ID,
-                url: loggerUrl,
-                width: 380,
-                height: event.data.height,
-                ...loggerPopoverAnchor(),
-            }).catch(console.error);
+            window.OBR.popover.open(loggerPopoverConfig(event.data.height)).catch(console.error);
         }
     });
 
     async function syncLogger(roomId: string | undefined) {
-        if (roomId && !loggerOpen) {
+        if (roomId) {
+            // Always (re-)open so the logger comes back if OBR closed it externally.
             loggerOpen = true;
-            await window.OBR.popover.open({
-                id: LOGGER_POPOVER_ID,
-                url: loggerUrl,
-                width: 380,
-                height: PILL_HEIGHT,
-                ...loggerPopoverAnchor(),
-            });
-        } else if (!roomId && loggerOpen) {
+            await window.OBR.popover.open(loggerPopoverConfig(PILL_HEIGHT));
+        } else if (loggerOpen) {
             loggerOpen = false;
             await window.OBR.popover.close(LOGGER_POPOVER_ID);
         }
@@ -121,6 +122,19 @@ async function init() {
     window.OBR.room.onMetadataChange(() => {
         renderContent().catch((error) => {
             console.error('[Vortex Bridge] Metadata change handler error:', error);
+        });
+    });
+
+    // OBR may close the logger popover when the action popup is shown/hidden.
+    // Re-open it whenever the action becomes visible.
+    window.OBR.action.onOpenChange((isOpen: boolean) => {
+        if (!isOpen) {
+            // Treat external close as a signal to re-open on the next show.
+            loggerOpen = false;
+            return;
+        }
+        renderContent().catch((error) => {
+            console.error('[Vortex Bridge] onOpenChange render error:', error);
         });
     });
 }
