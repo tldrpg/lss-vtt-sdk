@@ -112,6 +112,12 @@ async function init() {
                 console.error('[Vortex Bridge] Failed to clear metadata after room not found:', error);
             });
         }
+
+        if (event.data.type === 'vortex:windowResize') {
+            window.OBR.action.setHeight(event.data.height).catch((error: unknown) => {
+                console.error('[Vortex Bridge] Failed to resize action:', error);
+            });
+        }
     });
 
     await renderContent().catch((error) => {

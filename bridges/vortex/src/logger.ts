@@ -176,7 +176,7 @@ async function init() {
         if (event.origin !== VORTEX_ORIGIN) return;
         if (!isVortexMessage(event.data)) return;
 
-        if (event.data.type === 'vortex:loggerResize') {
+        if (event.data.type === 'vortex:windowResize') {
             const h = event.data.height;
             if (h > 0) {
                 lastContentH = h;

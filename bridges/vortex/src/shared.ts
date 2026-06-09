@@ -93,7 +93,7 @@ export type VortexHostMessage =
     | { type: 'vortex:roomSelected'; roomId: string }
     | { type: 'vortex:newRoll'; summary?: RollSummary }
     | { type: 'vortex:roomNotFound' }
-    | { type: 'vortex:loggerResize'; height: number };
+    | { type: 'vortex:windowResize'; height: number };
 
 /** Type guard for messages coming from the embedded Vortex iframe. */
 export function isVortexMessage(data: unknown): data is VortexHostMessage {
@@ -107,6 +107,6 @@ export function isVortexMessage(data: unknown): data is VortexHostMessage {
         type === 'vortex:roomSelected' ||
         type === 'vortex:newRoll' ||
         type === 'vortex:roomNotFound' ||
-        type === 'vortex:loggerResize'
+        type === 'vortex:windowResize'
     );
 }
