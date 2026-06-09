@@ -2,6 +2,7 @@ import {
     VORTEX_ORIGIN,
     ROOM_METADATA_KEY,
     LOGGER_POPOVER_ID,
+    loggerPopoverAnchor,
     IFRAME_SANDBOX,
     PILL_HEIGHT,
     BRIDGE_CHANNEL,
@@ -39,7 +40,7 @@ async function init() {
                 url: loggerUrl,
                 width: 380,
                 height: event.data.height,
-                anchorPosition: 'BOTTOM_RIGHT',
+                ...loggerPopoverAnchor(),
             }).catch(console.error);
         }
     });
@@ -52,7 +53,7 @@ async function init() {
                 url: loggerUrl,
                 width: 380,
                 height: PILL_HEIGHT,
-                anchorPosition: 'BOTTOM_RIGHT',
+                ...loggerPopoverAnchor(),
             });
         } else if (!roomId && loggerOpen) {
             loggerOpen = false;

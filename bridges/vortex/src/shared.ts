@@ -13,6 +13,22 @@ export const LOGGER_POPOVER_ID = 'rodeo.lss/vortex-logger';
 /** Height of the collapsed pill bar (px). */
 export const PILL_HEIGHT = 44;
 
+/**
+ * Pins an OBR popover to the bottom-right corner of the viewport.
+ *
+ * OBR's `anchorPosition` is a `{ left, top }` coordinate (not a named enum).
+ * We anchor to the viewport's bottom-right corner and set `transformOrigin`
+ * so the popover grows up-and-left from that point. Computed at call time so
+ * it follows viewport resizes rather than capturing stale dimensions.
+ */
+export function loggerPopoverAnchor() {
+    return {
+        anchorReference: 'POSITION' as const,
+        anchorPosition: { left: window.innerWidth, top: window.innerHeight },
+        transformOrigin: { horizontal: 'RIGHT' as const, vertical: 'BOTTOM' as const },
+    };
+}
+
 /** BroadcastChannel name shared between the action frame and the logger popover. */
 export const BRIDGE_CHANNEL = 'lss-vortex-bridge';
 
