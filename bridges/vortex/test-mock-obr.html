@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OBR Mock — Vortex Extension Test</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #0a0a0a;
+        color: #fff;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .obr-container {
+        display: flex;
+        height: 100vh;
+      }
+
+      /* ── VTT canvas ── */
+      .vtt-area {
+        flex: 1;
+        position: relative;
+        background:
+          linear-gradient(45deg,  #1c1c1c 25%, transparent 25%),
+          linear-gradient(-45deg, #1c1c1c 25%, transparent 25%),
+          linear-gradient(45deg,  transparent 75%, #1c1c1c 75%),
+          linear-gradient(-45deg, transparent 75%, #1c1c1c 75%);
+        background-size: 24px 24px;
+        background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+        background-color: #141414;
+      }
+
+      .vtt-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #333;
+        font-size: 13px;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      /* ── OBR toolbar ── */
+      .obr-toolbar {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        z-index: 10;
+      }
+
+      .obr-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        background: #2a2a2a;
+        border: 1px solid #3a3a3a;
+        color: #aaa;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        transition: background 0.15s, color 0.15s;
+      }
+
+      .obr-btn:hover { background: #3a3a3a; color: #fff; }
+      .obr-btn.active { background: #4a9eff; color: #fff; border-color: #4a9eff; }
+
+      /* ── Popover host ── */
+      #popoverHost { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+      #popoverHost > * { pointer-events: all; }
+
+      .popover-panel {
+        position: absolute;
+        top: 60px;
+        left: 12px;
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 8px;
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+        overflow: hidden;
+      }
+
+      .popover-corner {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        border-radius: 8px;
+        overflow: visible;
+      }
+
+      .popover-panel iframe,
+      .popover-corner iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+      }
+
+      /* ── Sidebar ── */
+      .sidebar {
+        width: 280px;
+        background: #111;
+        border-left: 1px solid #222;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .sidebar-section {
+        padding: 10px 14px;
+        border-bottom: 1px solid #222;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #555;
+      }
+
+      .metadata-block {
+        padding: 10px 14px;
+        border-bottom: 1px solid #1a1a1a;
+        font-family: 'Monaco', 'Courier New', monospace;
+        font-size: 11px;
+      }
+
+      .meta-key { color: #6a9f3a; }
+      .meta-val { color: #e06c75; }
+
+      .log-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 0;
+      }
+
+      .log-line {
+        font-family: 'Monaco', 'Courier New', monospace;
+        font-size: 10px;
+        padding: 2px 14px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      .log-line.info  { color: #4a9eff; }
+      .log-line.event { color: #a4d92e; }
+      .log-line.warn  { color: #e5c07b; }
+      .log-line.error { color: #e06c75; }
+
+      .sidebar-footer {
+        padding: 8px 14px;
+        border-top: 1px solid #222;
+      }
+
+      .clear-btn {
+        width: 100%;
+        background: #1e1e1e;
+        border: 1px solid #333;
+        color: #666;
+        padding: 5px 0;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        transition: color 0.15s;
+      }
+
+      .clear-btn:hover { color: #aaa; }
+    </style>
+  </head>
+  <body>
+
+    <script>
+      // ── Mock OBR SDK ──────────────────────────────────────────────────────────
+      // Injected before any iframe loads so bridge pages can access it via
+      // window.parent.OBR (see main.ts / logger.ts OBR bootstrap logic).
+
+      window.OBR = {
+        _metadata: { 'rodeo.lss/vortex-room': undefined },
+        _metadataListeners: [],
+        _popovers: new Map(),
+
+        onReady: function () {
+          return Promise.resolve();
+        },
+
+        player: {
+          // Toggle this to 'PLAYER' to test non-owner access
+          getRole: function () { return Promise.resolve('GM'); },
+        },
+
+        room: {
+          getMetadata: function () {
+            return Promise.resolve({ ...window.OBR._metadata });
+          },
+
+          setMetadata: function (patch) {
+            Object.assign(window.OBR._metadata, patch);
+            const snapshot = { ...window.OBR._metadata };
+            if (typeof log === 'function') log('setMetadata: ' + JSON.stringify(patch), 'warn');
+            for (const fn of window.OBR._metadataListeners) {
+              try { fn(snapshot); } catch (e) { console.error('[Mock OBR] listener error', e); }
+            }
+            if (typeof updateMetadataDisplay === 'function') updateMetadataDisplay();
+            return Promise.resolve();
+          },
+
+          onMetadataChange: function (callback) {
+            window.OBR._metadataListeners.push(callback);
+            return function unsubscribe() {
+              window.OBR._metadataListeners =
+                window.OBR._metadataListeners.filter(function (fn) { return fn !== callback; });
+            };
+          },
+        },
+
+        popover: {
+          open: function (options) {
+            var existing = window.OBR._popovers.get(options.id);
+            if (existing && existing.url === options.url) {
+              // Same popover, potentially different dimensions — resize without reload
+              var sameSize = existing.width === options.width && existing.height === options.height;
+              window.OBR._popovers.set(options.id, options);
+              if (!sameSize) {
+                if (typeof updatePopoverSize === 'function') updatePopoverSize(options.id, options.width, options.height);
+                log('popover.resize: ' + options.id + ' → ' + options.width + 'x' + options.height, 'info');
+              }
+              return Promise.resolve();
+            }
+            window.OBR._popovers.set(options.id, options);
+            if (typeof renderPopover === 'function') renderPopover(options);
+            log('popover.open: ' + options.id + ' → ' + options.url, 'event');
+            return Promise.resolve();
+          },
+
+          close: function (id) {
+            window.OBR._popovers.delete(id);
+            if (typeof removePopover === 'function') removePopover(id);
+            log('popover.close: ' + id, 'event');
+            return Promise.resolve();
+          },
+        },
+      };
+    </script>
+
+    <div class="obr-container">
+
+      <div class="vtt-area">
+        <div class="vtt-label">Virtual Table (Mock)</div>
+
+        <div class="obr-toolbar">
+          <button class="obr-btn" id="vortexBtn" title="Vortex">🎲</button>
+        </div>
+
+        <div id="popoverHost"></div>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-section">Room Metadata</div>
+        <div class="metadata-block">
+          <span class="meta-key">rodeo.lss/vortex-room: </span><span class="meta-val" id="metaVal">undefined</span>
+        </div>
+
+        <div class="sidebar-section">Event Log</div>
+        <div class="log-area" id="logArea"></div>
+
+        <div class="sidebar-footer">
+          <button class="clear-btn" onclick="clearLog()">Clear log</button>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      // ── Logging ───────────────────────────────────────────────────────────────
+
+      function log(msg, type) {
+        type = type || 'info';
+        var area = document.getElementById('logArea');
+        var line = document.createElement('div');
+        line.className = 'log-line ' + type;
+        var t = new Date().toLocaleTimeString('en', { hour12: false });
+        line.textContent = '[' + t + '] ' + msg;
+        area.appendChild(line);
+        area.scrollTop = area.scrollHeight;
+      }
+
+      function clearLog() {
+        document.getElementById('logArea').innerHTML = '';
+      }
+
+      // ── Metadata display ──────────────────────────────────────────────────────
+
+      function updateMetadataDisplay() {
+        var val = window.OBR._metadata['rodeo.lss/vortex-room'];
+        document.getElementById('metaVal').textContent = val != null ? val : 'undefined';
+      }
+
+      // ── Popover rendering ─────────────────────────────────────────────────────
+
+      function renderPopover(options) {
+        removePopover(options.id);
+
+        var el = document.createElement('div');
+        el.dataset.popoverId = options.id;
+
+        var iframe = document.createElement('iframe');
+        iframe.src = options.url;
+
+        if (options.anchorPosition === 'BOTTOM_RIGHT') {
+          el.className = 'popover-corner';
+          el.style.width  = (options.width  || 100) + 'px';
+          el.style.height = (options.height || 100) + 'px';
+        } else {
+          el.className = 'popover-panel';
+          el.style.width  = (options.width  || 400) + 'px';
+          el.style.height = (options.height || 1200) + 'px';
+        }
+
+        el.appendChild(iframe);
+        document.getElementById('popoverHost').appendChild(el);
+
+        // Keep toolbar button state in sync for the main popover
+        if (options.id === 'main') {
+          document.getElementById('vortexBtn').classList.add('active');
+        }
+      }
+
+      function updatePopoverSize(id, width, height) {
+        var el = document.querySelector('[data-popover-id="' + id + '"]');
+        if (!el) return;
+        el.style.width  = (width  || 100) + 'px';
+        el.style.height = (height || 100) + 'px';
+      }
+
+      function removePopover(id) {
+        var existing = document.querySelector('[data-popover-id="' + id + '"]');
+        if (existing) existing.remove();
+        if (id === 'main') {
+          document.getElementById('vortexBtn').classList.remove('active');
+        }
+      }
+
+      // ── Toolbar button ────────────────────────────────────────────────────────
+
+      document.getElementById('vortexBtn').addEventListener('click', function () {
+        if (window.OBR._popovers.has('main')) {
+          window.OBR.popover.close('main');
+        } else {
+          window.OBR.popover.open({
+            id: 'main',
+            url: window.location.origin + '/vortex/obr/',
+            width: 400,
+            height: 1200,
+          });
+        }
+      });
+
+      // ── Relay messages from iframes for log visibility ────────────────────────
+
+      window.addEventListener('message', function (event) {
+        if (event.data && event.data.type) {
+          log('message from iframe: ' + JSON.stringify(event.data), 'info');
+        }
+      });
+
+      // ── Init ──────────────────────────────────────────────────────────────────
+
+      log('OBR Mock ready', 'info');
+      updateMetadataDisplay();
+    </script>
+  </body>
+</html>
