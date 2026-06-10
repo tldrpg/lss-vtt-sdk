@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@longstoryshort/vtt-sdk": "^0.4.0",
+    "@longstoryshort/vtt-sdk": "^0.5.0",
     "@owlbear-rodeo/sdk": "^3.1.0"
   },
   "devDependencies": {

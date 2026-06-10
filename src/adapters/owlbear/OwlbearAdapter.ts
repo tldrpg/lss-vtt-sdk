@@ -131,6 +131,19 @@ export class OwlbearAdapter implements ObrAdapter {
         void this.obr?.notification.show(message, NOTIFY_VARIANT[variant]).catch(() => {});
     }
 
+    getRoomMetadata(): Promise<Record<string, unknown>> {
+        if (!this.obr) return Promise.resolve({});
+        return this.obr.room.getMetadata().then(
+            (meta) => meta as Record<string, unknown>,
+            () => ({}),
+        );
+    }
+
+    onRoomMetadataChange(handler: () => void): () => void {
+        if (!this.obr) return () => {};
+        return this.obr.room.onMetadataChange(handler);
+    }
+
     dispose(): void {
         this.disposed = true;
     }

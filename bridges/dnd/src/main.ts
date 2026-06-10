@@ -1,5 +1,5 @@
 import * as obrSdk from '@owlbear-rodeo/sdk';
-import { syncObrref, OwlbearAdapter, preloadObrSdk } from '@longstoryshort/vtt-sdk/owlbear';
+import { syncObrref, OwlbearAdapter, preloadObrSdk, NOTIFY_ROLLS_KEY } from '@longstoryshort/vtt-sdk/owlbear';
 import { createBridgeSheetSource, SHEET_IFRAME_SANDBOX, formatRollMessage, rollVariant } from '@longstoryshort/vtt-sdk';
 
 // Restore obrref before the SDK reads it, and stash the already-imported
@@ -30,16 +30,24 @@ void adapter.ready().then((ok) => {
     if (!ok) return;
     adapter.notify('🎲 Sheet connected to the table', 'success');
 
-    // When the sheet posts a roll: local toast for the roller, broadcast to
-    // peers, and try to place a floating label above the selected token.
+    // Vortex bridge writes NOTIFY_ROLLS_KEY=false when its logger is active so
+    // notifications don't double up with the logger's own roll display.
+    let notifyRolls = true;
+    const applySettings = (meta: Record<string, unknown>): void => {
+        notifyRolls = meta[NOTIFY_ROLLS_KEY] !== false;
+    };
+    void adapter.getRoomMetadata().then(applySettings);
+    adapter.onRoomMetadataChange(() => { void adapter.getRoomMetadata().then(applySettings); });
+
+    // When the sheet posts a roll: local toast for the roller, broadcast to peers.
     source.onRoll((roll) => {
-        adapter.notify(formatRollMessage(roll), rollVariant(roll));
+        if (notifyRolls) adapter.notify(formatRollMessage(roll), rollVariant(roll));
         adapter.broadcast({ type: 'dnd:roll', payload: roll });
     });
 
     // Relay rolls broadcast by other players as local toasts.
     source.onEvent((event) => {
-        if (event.type === 'dnd:roll') {
+        if (event.type === 'dnd:roll' && notifyRolls) {
             adapter.notify(formatRollMessage(event.payload), rollVariant(event.payload));
         }
     });

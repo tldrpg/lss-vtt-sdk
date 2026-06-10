@@ -1,5 +1,5 @@
 import * as obrSdk from '@owlbear-rodeo/sdk';
-import { whenObrReady } from '@longstoryshort/vtt-sdk/owlbear';
+import { whenObrReady, NOTIFY_ROLLS_KEY } from '@longstoryshort/vtt-sdk/owlbear';
 import { SHEET_IFRAME_SANDBOX } from '@longstoryshort/vtt-sdk';
 import {
     VORTEX_ORIGIN,
@@ -50,6 +50,9 @@ async function init() {
     });
 
     async function syncLogger(roomId: string | undefined) {
+        // When Vortex is connected the logger displays rolls, so suppress DnD bridge toasts.
+        window.OBR.room.setMetadata({ [NOTIFY_ROLLS_KEY]: !roomId }).catch(console.error);
+
         if (roomId) {
             // Always (re-)open so the logger comes back if OBR closed it externally.
             loggerOpen = true;

@@ -15,5 +15,7 @@ export interface ObrAdapter {
     notify(message: string, variant?: 'info' | 'success' | 'warning' | 'error'): void;
     broadcast(event: SheetEvent): void;
     onEvent(handler: (event: SheetEvent) => void): () => void;
+    getRoomMetadata(): Promise<Record<string, unknown>>;
+    onRoomMetadataChange(handler: () => void): () => void;
     dispose(): void;
 }
