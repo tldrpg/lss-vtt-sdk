@@ -151,7 +151,7 @@ stops being a counter-example and the dead dependency becomes a real one.
 
 ---
 
-## Phase 5 — Vortex `logger.ts` cleanup  ← Opus
+## Phase 5 — Vortex `logger.ts` cleanup  ✅ done
 
 Bring the loosest module up to the core's rigor.
 
@@ -172,7 +172,7 @@ Bring the loosest module up to the core's rigor.
 
 ---
 
-## Phase 6 — Integration guide + bridge template
+## Phase 6 — Integration guide + bridge template  ✅ done
 
 Deliver the "build a minimal VTT+LSS bridge" guide — the explicit ask.
 

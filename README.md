@@ -84,6 +84,12 @@ sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-san
 
 `allow-same-origin` is required so the sheet can read its auth cookie and access localStorage. Without it the sheet gets an opaque origin and auth breaks.
 
+## Adapt for your own VTT
+
+The bridge template in [`bridges/_template/`](bridges/_template/) is a copy-and-modify starting point — a stub `VTTAdapter` wired to `createBridgeSheetSource` + `createRollBridge`, ready to build with Vite.
+
+See the [integration guide](docs/integration-guide.md) for a line-by-line walkthrough: sandbox requirements, the `VTTAdapter` seam, what `createRollBridge` does internally, and how to handle experimental events.
+
 ## Reference bridge — Owlbear Rodeo (D&D 5e)
 
 A deployable vanilla-TS bridge for Owlbear Rodeo lives in [`bridges/dnd/`](bridges/dnd/). It is automatically deployed to GitHub Pages on every push to `master`.
