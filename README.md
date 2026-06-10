@@ -28,32 +28,29 @@ npm install @owlbear-rodeo/sdk
 
 | Import | Contents |
 |--------|----------|
-| `@longstoryshort/vtt-sdk` | Core: types, `createRollBridge`, `createSheetClient`, `createBridgeSheetSource`, `formatRollMessage` |
-| `@longstoryshort/vtt-sdk/owlbear` | `OwlbearAdapter`, `syncObrref`, constants |
+| `@longstoryshort/vtt-sdk` | Core: protocol types, `createBridgeSheetSource`, `createSheetClient`, `formatRollMessage`, `SHEET_IFRAME_SANDBOX` |
+| `@longstoryshort/vtt-sdk/owlbear` | `OwlbearAdapter`, `syncObrref`, OBR bootstrap helpers |
 
 ## Quick start — bridge side
 
 ```ts
-import { createRollBridge, createBridgeSheetSource } from '@longstoryshort/vtt-sdk';
-import { OwlbearAdapter } from '@longstoryshort/vtt-sdk/owlbear';
+import { createBridgeSheetSource, formatRollMessage, rollVariant } from '@longstoryshort/vtt-sdk';
 
-const adapter = new OwlbearAdapter();
 const source = createBridgeSheetSource({
     iframe: document.getElementById('sheet-frame') as HTMLIFrameElement,
     allowedOrigins: ['https://longstoryshort.app'],
 });
 
-const dispose = createRollBridge(source, adapter, {
-    messages: {
-        connected: '🎲 Sheet connected',
-        labelHint: 'Select exactly one token to place a roll label',
-    },
+source.onRoll((roll) => {
+    // wire to your VTT's APIs — notify, broadcast, label, chat, etc.
+    console.log(formatRollMessage(roll), rollVariant(roll));
 });
 
 // later:
-dispose();
 source.dispose();
 ```
+
+For the full Owlbear Rodeo bridge (notify + peer broadcast + token label), see [`bridges/dnd/src/main.ts`](bridges/dnd/src/main.ts).
 
 ## Quick start — sheet side
 

@@ -1,12 +1,8 @@
-import { createBridgeSheetSource, createRollBridge, SHEET_IFRAME_SANDBOX } from '@longstoryshort/vtt-sdk';
-import { MyVTTAdapter } from './adapter';
+import { createBridgeSheetSource, SHEET_IFRAME_SANDBOX, formatRollMessage, rollVariant } from '@longstoryshort/vtt-sdk';
 
-// The URL of the LSS sheet page your VTT will embed.
-// For production bridges this is always the list page — the sheet handles
-// per-character routing itself once it loads.
 const SHEET_URL = 'https://longstoryshort.app/iframe/characters/list/';
 
-// --- 1. Embed the sheet -------------------------------------------------------
+// --- Embed the sheet ---------------------------------------------------------
 
 const iframe = document.createElement('iframe');
 iframe.src = SHEET_URL;
@@ -16,27 +12,33 @@ iframe.setAttribute('allow', 'clipboard-write');
 iframe.style.cssText = 'border:none;width:100%;height:100vh;display:block';
 document.body.appendChild(iframe);
 
-// --- 2. Create the postMessage transport -------------------------------------
+// --- Listen for rolls --------------------------------------------------------
 
 const source = createBridgeSheetSource({
     iframe,
-    // Only honor messages that originate from the LSS sheet origin.
-    // Remove or adjust if you host the sheet yourself.
     allowedOrigins: ['https://longstoryshort.app'],
 });
 
-// --- 3. Wire up the roll bridge ----------------------------------------------
+source.onRoll((roll) => {
+    const message = formatRollMessage(roll); // e.g. "🎲 Alice: Longsword Attack — 18"
+    const variant = rollVariant(roll);       // 'info' | 'success' | 'warning'
 
-const disposeRollBridge = createRollBridge(source, new MyVTTAdapter(), {
-    messages: {
-        // Toast shown once when the adapter handshakes with your VTT.
-        connected: 'Sheet connected',
-        // Toast shown to the roller when no label could be placed (no token selected).
-        labelHint: 'Select a token to show your roll result above it',
-    },
+    // TODO: wire to your VTT's notification and peer-broadcast APIs
+    // e.g. myVTT.notification.show(message, variant);
+    //      myVTT.room.broadcast(JSON.stringify({ type: 'dnd:roll', payload: roll }));
+    console.log('[Roll]', message, variant);
 });
 
-// --- Cleanup (call on extension unload if your VTT supports it) --------------
+// TODO: relay broadcasts from other clients back as local notifications
+// e.g. myVTT.room.onBroadcast((raw) => {
+//     const event = JSON.parse(raw);
+//     if (event.type === 'dnd:roll') {
+//         myVTT.notification.show(
+//             formatRollMessage(event.payload),
+//             rollVariant(event.payload),
+//         );
+//     }
+// });
 
-// disposeRollBridge();
+// --- Cleanup (call on extension unload if your VTT supports it) --------------
 // source.dispose();

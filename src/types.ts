@@ -5,14 +5,6 @@
  * only from other SDK files and external dependencies.
  */
 
-export type VTTUserRole = 'gm' | 'player';
-
-export interface VTTUser {
-    id: string;
-    name: string;
-    role: VTTUserRole;
-}
-
 export type NotifyVariant = 'info' | 'success' | 'warning' | 'error';
 
 /** A single dice roll made on a character sheet, normalized for any VTT. */
@@ -159,51 +151,6 @@ export type SheetEvent =
 export interface SheetSource {
     /** Subscribe to rolls made on the sheet. Returns an unsubscribe fn. */
     onRoll(handler: (roll: DiceRollPayload) => void): () => void;
-}
-
-/** Human-facing strings surfaced by the bridge — override to localize. */
-export interface RollBridgeMessages {
-    /** Toast shown once the sheet connects to the table. */
-    connected: string;
-    /** Toast shown to the roller when a token label could not be placed. */
-    labelHint: string;
-}
-
-export interface RollBridgeOptions {
-    messages?: Partial<RollBridgeMessages>;
-}
-
-/**
- * The seam every VTT implements. The sheet talks only to this interface; each
- * table (Owlbear, Foundry, …) ships a thin adapter that maps its own SDK onto
- * these methods.
- */
-export interface VTTAdapter {
-    /** True only when the page actually runs inside this VTT. */
-    readonly isAvailable: boolean;
-    /**
-     * Loads and handshakes with the VTT SDK. Resolves `true` once ready, or
-     * `false` if the page is not running inside this VTT. Safe to call multiple
-     * times — the work happens once.
-     */
-    ready(): Promise<boolean>;
-    getSessionId(): string | undefined;
-    getCurrentUser(): VTTUser | undefined;
-    /** Send an event to every other client in the room (sender excluded). */
-    broadcast(event: SheetEvent): void;
-    /** Subscribe to events broadcast by other clients. Returns an unsubscribe fn. */
-    onEvent(handler: (event: SheetEvent) => void): () => void;
-    /** Local toast on this client. */
-    notify(message: string, variant?: NotifyVariant): void;
-    /**
-     * Float a transient text label over the player's currently selected token.
-     * Scene items are shared, so the label is visible to everyone at the table.
-     * Resolves `true` if a label was placed, `false` when there isn't exactly
-     * one token selected or the scene write was rejected (e.g. no permission).
-     */
-    labelOverSelection(text: string, ttlMs?: number): Promise<boolean>;
-    /** Tear down listeners / SDK handlers. */
-    dispose(): void;
 }
 
 // --- postMessage transport (sheet ↔ bridge across the trust boundary) ---

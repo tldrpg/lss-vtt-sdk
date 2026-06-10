@@ -1,5 +1,5 @@
 import type {
-    CapabilityManifest, DiceRollPayload, MessageHost, SheetEvent, SheetSource,
+    DiceRollPayload, MessageHost, SheetEvent, SheetSource,
 } from './types';
 import { readEnvelope, wrapEnvelope } from './postMessageProtocol';
 
@@ -19,11 +19,9 @@ export interface BridgeSheetSourceOptions {
     targetOrigin?: string;
 }
 
-/** A `SheetSource` (for `createRollBridge`) plus raw access and inbound `send`. */
+/** Bridge-side source: `onRoll` convenience + full `onEvent` access + inbound `send`. */
 export interface BridgeSheetSource extends SheetSource {
-    /** Subscribe to the sheet's capability manifest (sent once at handshake). Returns an unsubscribe fn. */
-    onManifest(handler: (manifest: CapabilityManifest) => void): () => void;
-    /** Subscribe to every event coming from the sheet (not only rolls). */
+    /** Subscribe to every event coming from the sheet. Returns an unsubscribe fn. */
     onEvent(handler: (event: SheetEvent) => void): () => void;
     /** Post an inbound command to the sheet (e.g. `dnd:command`). */
     send(event: SheetEvent): void;
@@ -32,9 +30,8 @@ export interface BridgeSheetSource extends SheetSource {
 
 /**
  * Bridge-side half of the postMessage transport. Runs in the bridge frame (the
- * VTT extension), listens to the embedded sheet iframe, and exposes a
- * `SheetSource` so `createRollBridge` can drive the VTT adapter — without the
- * bridge ever touching the sheet's internals.
+ * VTT extension), listens to the embedded sheet iframe, and delivers typed
+ * `SheetEvent`s — without the bridge ever touching the sheet's internals.
  *
  * `contentWindow` is read live on every message/send, so it survives the sheet
  * iframe navigating or reloading (e.g. Gatsby dev's full-reload on navigation).
@@ -70,15 +67,6 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
         onRoll(handler: (roll: DiceRollPayload) => void): () => void {
             const wrapped = (event: SheetEvent): void => {
                 if (event.type === 'dnd:roll') {
-                    handler(event.payload);
-                }
-            };
-            handlers.add(wrapped);
-            return () => { handlers.delete(wrapped); };
-        },
-        onManifest(handler: (manifest: CapabilityManifest) => void): () => void {
-            const wrapped = (event: SheetEvent): void => {
-                if (event.type === 'dnd:manifest') {
                     handler(event.payload);
                 }
             };
