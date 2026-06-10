@@ -26,7 +26,7 @@ Vortex).
 ## Decisions taken (do not re-litigate)
 
 - **Event naming:** migrate the wire `type` strings from SCREAMING_CAPS to a flat
-  `lss:*` namespace — `lss:roll`, `lss:manifest`, `lss:health`, `lss:command`.
+  `dnd:*` namespace — `dnd:roll`, `dnd:manifest`, `dnd:health`, `dnd:command`.
   Direction (sheet→host vs host→sheet) is **not** encoded in the name — it lives in
   the README status table. Rationale: `roll` already travels two topologies
   (sheet→bridge via postMessage *and* bridge→peer via OBR broadcast), so a
@@ -50,7 +50,7 @@ Vortex).
 
 ---
 
-## Phase 1 — Protocol naming migration (`lss:*`)  ⚠️ breaking, lockstep
+## Phase 1 — Protocol naming migration (`dnd:*`)  ⚠️ breaking, lockstep
 
 The only phase that crosses the wire boundary, so it needs a coordinated deploy of
 the sheet app and the bridges. Cheap now (0.1.0, single first-party producer);
@@ -58,8 +58,8 @@ expensive once external bridges exist — so do it first.
 
 **Changes**
 - [src/types.ts](../../src/types.ts) — rename the four `SheetEvent` members:
-  `DICE_ROLL→lss:roll`, `MANIFEST→lss:manifest`, `HEALTH_CHANGED→lss:health`,
-  `CAPABILITY_COMMAND→lss:command`.
+  `DICE_ROLL→dnd:roll`, `MANIFEST→dnd:manifest`, `HEALTH_CHANGED→dnd:health`,
+  `CAPABILITY_COMMAND→dnd:command`.
 - [src/postMessageProtocol.ts](../../src/postMessageProtocol.ts) — bump
   `VERSION` 1→2 so a sheet/bridge version mismatch fails explicitly instead of
   silently dropping.
@@ -83,16 +83,16 @@ Stop advertising the inbound contract as done; keep it as a typed reservation.
 **Changes**
 - [src/types.ts](../../src/types.ts) — add `@experimental` JSDoc to
   `CapabilityOperation` & friends, `CapabilityManifest`, `HealthChangedPayload`,
-  and the `lss:manifest`/`lss:health`/`lss:command` arms of `SheetEvent`.
+  and the `dnd:manifest`/`dnd:health`/`dnd:command` arms of `SheetEvent`.
 - [README.md](../../README.md) — replace the flat protocol table with a status +
   direction table:
 
   | Type | Status | Direction |
   |------|--------|-----------|
-  | `lss:roll` | ✅ stable | sheet → host |
-  | `lss:manifest` | 🧪 reserved | sheet → host |
-  | `lss:health` | 🧪 reserved | sheet → host |
-  | `lss:command` | 🧪 reserved | host → sheet |
+  | `dnd:roll` | ✅ stable | sheet → host |
+  | `dnd:manifest` | 🧪 reserved | sheet → host |
+  | `dnd:health` | 🧪 reserved | sheet → host |
+  | `dnd:command` | 🧪 reserved | host → sheet |
 
 - [src/createSheetBridge.ts](../../src/createSheetBridge.ts) — clarify in the doc
   comment that it is the *default roll bridge* (a policy), not a full protocol
@@ -186,7 +186,7 @@ Deliver the "build a minimal VTT+LSS bridge" guide — the explicit ask.
   `labelOverSelection` returning `false` means, best-effort vs guaranteed paths).
 - Cross-link from [README.md](../../README.md) ("Adapt for your own VTT").
 
-**Depends on:** Phases 1–2 (guide must use final `lss:*` names and reflect which
+**Depends on:** Phases 1–2 (guide must use final `dnd:*` names and reflect which
 events are stable vs reserved).
 **Risk:** none.
 

@@ -6,7 +6,7 @@ import { createSheetClient } from './createSheetClient';
 import type { MessageHost, MessageTarget, SheetEvent } from './types';
 
 const roll: SheetEvent = {
-    type: 'DICE_ROLL',
+    type: 'dnd:roll',
     payload: {
         characterId: 'c1',
         characterName: 'Alice',
@@ -46,7 +46,7 @@ describe('createSheetClient', () => {
         createSheetClient({ host: h.host, target: h.target }).send(roll);
 
         expect(h.target.postMessage).toHaveBeenCalledWith(
-            expect.objectContaining({ __lssSheetSdk: 1, event: roll }),
+            expect.objectContaining({ __lssSheetSdk: 2, event: roll }),
             '*',
         );
     });
@@ -63,7 +63,7 @@ describe('createSheetClient', () => {
         const handler = vi.fn();
         createSheetClient({ host: h.host, target: h.target }).onEvent(handler);
 
-        h.deliver({ __lssSheetSdk: 1, event: roll });
+        h.deliver({ __lssSheetSdk: 2, event: roll });
 
         expect(handler).toHaveBeenCalledWith(roll);
     });
@@ -84,7 +84,7 @@ describe('createSheetClient', () => {
         const handler = vi.fn();
         createSheetClient({ host: h.host, target: h.target }).onEvent(handler);
 
-        h.deliver({ __lssSheetSdk: 1, event: roll }, { source: { postMessage: vi.fn() } });
+        h.deliver({ __lssSheetSdk: 2, event: roll }, { source: { postMessage: vi.fn() } });
 
         expect(handler).not.toHaveBeenCalled();
     });
@@ -94,10 +94,10 @@ describe('createSheetClient', () => {
         const handler = vi.fn();
         createSheetClient({ host: h.host, target: h.target, allowedOrigins: ['https://ok.example'] }).onEvent(handler);
 
-        h.deliver({ __lssSheetSdk: 1, event: roll }, { origin: 'https://evil.example' });
+        h.deliver({ __lssSheetSdk: 2, event: roll }, { origin: 'https://evil.example' });
         expect(handler).not.toHaveBeenCalled();
 
-        h.deliver({ __lssSheetSdk: 1, event: roll }, { origin: 'https://ok.example' });
+        h.deliver({ __lssSheetSdk: 2, event: roll }, { origin: 'https://ok.example' });
         expect(handler).toHaveBeenCalledTimes(1);
     });
 
@@ -108,7 +108,7 @@ describe('createSheetClient', () => {
         client.onEvent(handler);
 
         client.dispose();
-        h.deliver({ __lssSheetSdk: 1, event: roll });
+        h.deliver({ __lssSheetSdk: 2, event: roll });
 
         expect(handler).not.toHaveBeenCalled();
         expect(h.host.removeEventListener).toHaveBeenCalled();

@@ -65,7 +65,7 @@ describe('createSheetBridge', () => {
 
         expect(h.adapter.notify).toHaveBeenCalledWith(expect.stringContaining('Alice'), 'info');
         expect(h.adapter.broadcast).toHaveBeenCalledWith({
-            type: 'DICE_ROLL',
+            type: 'dnd:roll',
             payload: expect.objectContaining({ total: '18' }),
         });
         expect(h.adapter.labelOverSelection).toHaveBeenCalledWith('18');
@@ -95,7 +95,7 @@ describe('createSheetBridge', () => {
         createSheetBridge(h.source, h.adapter);
         await flush();
 
-        h.emitIncoming({ type: 'DICE_ROLL', payload: makeRoll({ characterName: 'Bob', total: '7' }) });
+        h.emitIncoming({ type: 'dnd:roll', payload: makeRoll({ characterName: 'Bob', total: '7' }) });
 
         expect(h.adapter.notify).toHaveBeenCalledWith(expect.stringContaining('Bob'), 'info');
     });

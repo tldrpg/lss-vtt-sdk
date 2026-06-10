@@ -2,7 +2,7 @@ import type { SheetEvent } from './types';
 
 /** Marker key + version that tag our envelopes so foreign postMessage traffic is ignored. */
 export const MARKER = '__lssSheetSdk';
-export const VERSION = 1;
+export const VERSION = 2;
 
 export interface SheetEnvelope {
     __lssSheetSdk: number;

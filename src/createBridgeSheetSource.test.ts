@@ -6,7 +6,7 @@ import { createBridgeSheetSource } from './createBridgeSheetSource';
 import type { MessageHost, SheetEvent } from './types';
 
 const roll: SheetEvent = {
-    type: 'DICE_ROLL',
+    type: 'dnd:roll',
     payload: {
         characterId: 'c1',
         characterName: 'Alice',
@@ -40,12 +40,12 @@ function makeHarness() {
 }
 
 describe('createBridgeSheetSource', () => {
-    it('onRoll() delivers DICE_ROLL payloads from the sheet iframe', () => {
+    it('onRoll() delivers dnd:roll payloads from the sheet iframe', () => {
         const h = makeHarness();
         const handler = vi.fn();
         createBridgeSheetSource({ iframe: h.iframe, host: h.host }).onRoll(handler);
 
-        h.deliver({ __lssSheetSdk: 1, event: roll });
+        h.deliver({ __lssSheetSdk: 2, event: roll });
 
         expect(handler).toHaveBeenCalledWith(roll.payload);
     });
@@ -55,7 +55,7 @@ describe('createBridgeSheetSource', () => {
         const handler = vi.fn();
         createBridgeSheetSource({ iframe: h.iframe, host: h.host }).onRoll(handler);
 
-        h.deliver({ __lssSheetSdk: 1, event: roll }, { source: { postMessage: vi.fn() } });
+        h.deliver({ __lssSheetSdk: 2, event: roll }, { source: { postMessage: vi.fn() } });
 
         expect(handler).not.toHaveBeenCalled();
     });
@@ -77,10 +77,10 @@ describe('createBridgeSheetSource', () => {
             iframe: h.iframe, host: h.host, allowedOrigins: ['https://ok.example'],
         }).onRoll(handler);
 
-        h.deliver({ __lssSheetSdk: 1, event: roll }, { origin: 'https://evil.example' });
+        h.deliver({ __lssSheetSdk: 2, event: roll }, { origin: 'https://evil.example' });
         expect(handler).not.toHaveBeenCalled();
 
-        h.deliver({ __lssSheetSdk: 1, event: roll }, { origin: 'https://ok.example' });
+        h.deliver({ __lssSheetSdk: 2, event: roll }, { origin: 'https://ok.example' });
         expect(handler).toHaveBeenCalledTimes(1);
     });
 
@@ -91,7 +91,7 @@ describe('createBridgeSheetSource', () => {
         source.send(roll);
 
         expect(h.contentWindow.postMessage).toHaveBeenCalledWith(
-            expect.objectContaining({ __lssSheetSdk: 1, event: roll }),
+            expect.objectContaining({ __lssSheetSdk: 2, event: roll }),
             '*',
         );
     });
@@ -105,7 +105,7 @@ describe('createBridgeSheetSource', () => {
         const reloaded = { postMessage: vi.fn() };
         h.iframe.contentWindow = reloaded as unknown as Window;
 
-        h.deliver({ __lssSheetSdk: 1, event: roll }, { source: reloaded });
+        h.deliver({ __lssSheetSdk: 2, event: roll }, { source: reloaded });
 
         expect(handler).toHaveBeenCalledWith(roll.payload);
     });
@@ -117,7 +117,7 @@ describe('createBridgeSheetSource', () => {
         source.onRoll(handler);
 
         source.dispose();
-        h.deliver({ __lssSheetSdk: 1, event: roll });
+        h.deliver({ __lssSheetSdk: 2, event: roll });
 
         expect(handler).not.toHaveBeenCalled();
         expect(h.host.removeEventListener).toHaveBeenCalled();

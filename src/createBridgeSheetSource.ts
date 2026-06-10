@@ -25,7 +25,7 @@ export interface BridgeSheetSource extends SheetSource {
     onManifest(handler: (manifest: CapabilityManifest) => void): () => void;
     /** Subscribe to every event coming from the sheet (not only rolls). */
     onEvent(handler: (event: SheetEvent) => void): () => void;
-    /** Post an inbound command to the sheet (e.g. `CAPABILITY_COMMAND`). */
+    /** Post an inbound command to the sheet (e.g. `dnd:command`). */
     send(event: SheetEvent): void;
     dispose(): void;
 }
@@ -69,7 +69,7 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
     return {
         onRoll(handler: (roll: DiceRollPayload) => void): () => void {
             const wrapped = (event: SheetEvent): void => {
-                if (event.type === 'DICE_ROLL') {
+                if (event.type === 'dnd:roll') {
                     handler(event.payload);
                 }
             };
@@ -78,7 +78,7 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
         },
         onManifest(handler: (manifest: CapabilityManifest) => void): () => void {
             const wrapped = (event: SheetEvent): void => {
-                if (event.type === 'MANIFEST') {
+                if (event.type === 'dnd:manifest') {
                     handler(event.payload);
                 }
             };

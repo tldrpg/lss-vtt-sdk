@@ -111,7 +111,7 @@ export interface CapabilityDescriptor {
 /**
  * Capability manifest — the sheet's public declaration of what the host may do.
  * Sent outbound by the sheet at handshake time; the host reads it to know which
- * CAPABILITY_COMMAND operations are valid for this member.
+ * dnd:command operations are valid for this member.
  */
 export interface CapabilityManifest {
     version: '1';
@@ -131,14 +131,14 @@ export interface HealthChangedPayload {
 /**
  * Everything that crosses the sheet↔VTT boundary.
  *
- * Outbound (sheet → host):  DICE_ROLL · MANIFEST · HEALTH_CHANGED
- * Inbound  (host → sheet):  CAPABILITY_COMMAND
+ * Outbound (sheet → host):  dnd:roll · dnd:manifest · dnd:health
+ * Inbound  (host → sheet):  dnd:command
  */
 export type SheetEvent =
-    | { type: 'DICE_ROLL'; payload: DiceRollPayload }
-    | { type: 'MANIFEST'; payload: CapabilityManifest }
-    | { type: 'HEALTH_CHANGED'; payload: HealthChangedPayload }
-    | { type: 'CAPABILITY_COMMAND'; payload: CapabilityOperation };
+    | { type: 'dnd:roll'; payload: DiceRollPayload }
+    | { type: 'dnd:manifest'; payload: CapabilityManifest }
+    | { type: 'dnd:health'; payload: HealthChangedPayload }
+    | { type: 'dnd:command'; payload: CapabilityOperation };
 
 /**
  * Implemented by the host (the character-sheet app) so the bridge stays

@@ -36,7 +36,7 @@ export function createSheetBridge(
         // Local feedback — broadcast is REMOTE-only, so without this the roller
         // would see nothing on their own screen.
         adapter.notify(formatRollMessage(roll), rollVariant(roll));
-        adapter.broadcast({ type: 'DICE_ROLL', payload: roll });
+        adapter.broadcast({ type: 'dnd:roll', payload: roll });
         void adapter.labelOverSelection(roll.total).then((placed) => {
             if (!placed) {
                 adapter.notify(messages.labelHint, 'warning');
@@ -52,7 +52,7 @@ export function createSheetBridge(
         // of whether any roll has happened yet.
         adapter.notify(messages.connected, 'success');
         cleanups.push(adapter.onEvent((event) => {
-            if (event.type !== 'DICE_ROLL') {
+            if (event.type !== 'dnd:roll') {
                 return;
             }
             adapter.notify(formatRollMessage(event.payload), rollVariant(event.payload));
