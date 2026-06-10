@@ -25,22 +25,24 @@ const source = createBridgeSheetSource({
 
 const adapter = new OwlbearAdapter();
 
-// When the sheet posts a roll: show a local toast, broadcast to peers,
-// and try to place a floating label above the roller's selected token.
-source.onRoll((roll) => {
-    adapter.notify(formatRollMessage(roll), rollVariant(roll));
-    adapter.broadcast({ type: 'dnd:roll', payload: roll });
-    void adapter.labelOverSelection(roll.total).then((placed) => {
-        if (!placed) {
-            adapter.notify('No label placed — select exactly one of your tokens on the map', 'warning');
-        }
-    });
-});
-
-// Once OBR is ready: confirm the connection and relay peers' rolls as toasts.
+// Gate everything on OBR being ready — rolls that arrive before init are ignored.
 void adapter.ready().then((ok) => {
     if (!ok) return;
     adapter.notify('🎲 Sheet connected to the table', 'success');
+
+    // When the sheet posts a roll: local toast for the roller, broadcast to
+    // peers, and try to place a floating label above the selected token.
+    source.onRoll((roll) => {
+        adapter.notify(formatRollMessage(roll), rollVariant(roll));
+        adapter.broadcast({ type: 'dnd:roll', payload: roll });
+        void adapter.labelOverSelection(roll.total).then((placed) => {
+            if (!placed) {
+                adapter.notify('No label placed — select exactly one of your tokens on the map', 'warning');
+            }
+        });
+    });
+
+    // Relay rolls broadcast by other players as local toasts.
     source.onEvent((event) => {
         if (event.type === 'dnd:roll') {
             adapter.notify(formatRollMessage(event.payload), rollVariant(event.payload));

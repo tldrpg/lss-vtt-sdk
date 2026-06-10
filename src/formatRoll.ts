@@ -1,4 +1,6 @@
-import type { DiceRollPayload, NotifyVariant } from './types';
+import type { DiceRollPayload } from './types';
+
+export type NotifyVariant = 'info' | 'success' | 'warning' | 'error';
 
 /** Toast text for a roll, e.g. "🎲 Alice: Longsword Attack — 18 💥". */
 export function formatRollMessage(payload: DiceRollPayload): string {

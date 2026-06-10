@@ -5,8 +5,6 @@
  * only from other SDK files and external dependencies.
  */
 
-export type NotifyVariant = 'info' | 'success' | 'warning' | 'error';
-
 /** A single dice roll made on a character sheet, normalized for any VTT. */
 export interface DiceRollPayload {
     characterId: string;

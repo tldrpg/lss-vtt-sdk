@@ -192,7 +192,7 @@ events are stable vs reserved).
 
 ---
 
-## Phase 7 — Optional polish (defer until driven by need)
+## Phase 7 — Optional polish  ✅ done
 
 - **LSP — `labelOverSelection` return** conflates "no selection", "unsupported",
   and "permission denied" all as `false`

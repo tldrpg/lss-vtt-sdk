@@ -7,3 +7,4 @@ export { createSheetClient } from './createSheetClient';
 export { createBridgeSheetSource } from './createBridgeSheetSource';
 export type { BridgeSheetSource, BridgeSheetSourceOptions, SheetFrameRef } from './createBridgeSheetSource';
 export { formatRollMessage, rollVariant } from './formatRoll';
+export type { NotifyVariant } from './formatRoll';

@@ -1,6 +1,6 @@
-import type { NotifyVariant, SheetEvent } from '../../types';
-
-type ObrPlayer = { id: string; name: string; role: 'gm' | 'player' };
+import type { SheetEvent } from '../../types';
+import type { NotifyVariant } from '../../formatRoll';
+import type { ObrAdapter, ObrPlayer } from './types';
 import {
     BROADCAST_CHANNEL, DEFAULT_LABEL_TTL_MS, LABEL_METADATA_KEY,
 } from './constants';
@@ -31,7 +31,7 @@ const NOTIFY_VARIANT: Record<NotifyVariant, 'INFO' | 'SUCCESS' | 'WARNING' | 'ER
  * everyone at the table sees the floating number. All scene work is best-effort
  * and degrades silently; the broadcast/notification path is the guaranteed core.
  */
-export class OwlbearAdapter {
+export class OwlbearAdapter implements ObrAdapter {
     private sdk: OwlbearSdk | null = null;
 
     private obr: Obr | null = null;

@@ -1,4 +1,5 @@
 export { OwlbearAdapter } from './OwlbearAdapter';
+export type { ObrAdapter, ObrPlayer } from './types';
 export { syncObrref } from './obrref';
 export {
     BROADCAST_CHANNEL, LABEL_METADATA_KEY, DEFAULT_LABEL_TTL_MS,
