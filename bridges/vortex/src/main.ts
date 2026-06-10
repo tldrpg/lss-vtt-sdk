@@ -15,7 +15,8 @@ import type { BridgeMessage } from './shared';
 
 let loggerOpen = false;
 
-declare global { interface Window { OBR: any; } }
+type OBRInstance = typeof obrSdk.default;
+declare global { interface Window { OBR: OBRInstance; } }
 
 async function init() {
     window.OBR = obrSdk.default;

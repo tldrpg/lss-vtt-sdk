@@ -129,7 +129,7 @@ Phase 4. Non-breaking additive exports.
 
 ---
 
-## Phase 4 — Realign the Vortex bridge onto the SDK  ← next
+## Phase 4 — Realign the Vortex bridge onto the SDK  ✅ done
 
 Make Vortex an SDK *consumer* (at least for transport/bootstrap/sandbox), so it
 stops being a counter-example and the dead dependency becomes a real one.
@@ -151,7 +151,7 @@ stops being a counter-example and the dead dependency becomes a real one.
 
 ---
 
-## Phase 5 — Vortex `logger.ts` cleanup
+## Phase 5 — Vortex `logger.ts` cleanup  ← Opus
 
 Bring the loosest module up to the core's rigor.
 
