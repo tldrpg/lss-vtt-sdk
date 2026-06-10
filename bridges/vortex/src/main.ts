@@ -1,14 +1,15 @@
+import * as obrSdk from '@owlbear-rodeo/sdk';
+import { whenObrReady } from '@longstoryshort/vtt-sdk/owlbear';
+import { SHEET_IFRAME_SANDBOX } from '@longstoryshort/vtt-sdk';
 import {
     VORTEX_ORIGIN,
     ROOM_METADATA_KEY,
     LOGGER_POPOVER_ID,
     loggerPopoverAnchor,
-    IFRAME_SANDBOX,
     PILL_HEIGHT,
     BRIDGE_CHANNEL,
     isVortexMessage,
     buildVortexUrl,
-    resolveOBR,
 } from './shared';
 import type { BridgeMessage } from './shared';
 
@@ -17,12 +18,8 @@ let loggerOpen = false;
 declare global { interface Window { OBR: any; } }
 
 async function init() {
-    await resolveOBR();
-
-    console.log('[Vortex Bridge] Initializing...');
-    // OBR.onReady() takes a callback; wrap it in a Promise so we wait until
-    // the OBR_READY handshake completes and room API calls become available.
-    await new Promise<void>((resolve) => window.OBR.onReady(resolve));
+    window.OBR = obrSdk.default;
+    await whenObrReady(window.OBR);
     console.log('[Vortex Bridge] OBR is ready');
 
     const contentEl = document.getElementById('content')!;
@@ -81,7 +78,7 @@ async function init() {
 
         const iframe = document.createElement('iframe');
         iframe.src = targetUrl;
-        iframe.sandbox.add(...IFRAME_SANDBOX.split(' '));
+        iframe.sandbox.add(...SHEET_IFRAME_SANDBOX.split(' '));
         iframe.allow = 'clipboard-write';
         contentEl.appendChild(iframe);
 

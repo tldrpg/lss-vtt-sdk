@@ -1,12 +1,13 @@
+import * as obrSdk from '@owlbear-rodeo/sdk';
+import { whenObrReady } from '@longstoryshort/vtt-sdk/owlbear';
+import { SHEET_IFRAME_SANDBOX } from '@longstoryshort/vtt-sdk';
 import {
     VORTEX_ORIGIN,
     ROOM_METADATA_KEY,
-    IFRAME_SANDBOX,
     PILL_HEIGHT,
     BRIDGE_CHANNEL,
     isVortexMessage,
     buildVortexUrl,
-    resolveOBR,
 } from './shared';
 import type { BridgeMessage, RollSummary } from './shared';
 
@@ -24,12 +25,9 @@ let lastContentH = MAX_HEIGHT - PILL_HEIGHT;
 let previewTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function init() {
-    await resolveOBR();
-
+    window.OBR = obrSdk.default;
+    await whenObrReady(window.OBR);
     console.log('[Vortex Logger] Initializing...');
-    // OBR.onReady() takes a callback; wrap it in a Promise so we wait until
-    // the OBR_READY handshake completes and room API calls become available.
-    await new Promise<void>((resolve) => window.OBR.onReady(resolve));
 
     document.documentElement.style.setProperty('--pill-height', `${PILL_HEIGHT}px`);
 
@@ -152,7 +150,7 @@ async function init() {
         if (targetUrl) {
             const iframe = document.createElement('iframe');
             iframe.src = targetUrl;
-            iframe.sandbox.add(...IFRAME_SANDBOX.split(' '));
+            iframe.sandbox.add(...SHEET_IFRAME_SANDBOX.split(' '));
             iframe.allow = 'clipboard-write';
             contentEl.appendChild(iframe);
         }

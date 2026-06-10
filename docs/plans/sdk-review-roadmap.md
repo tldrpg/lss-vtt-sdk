@@ -102,7 +102,7 @@ Stop advertising the inbound contract as done; keep it as a typed reservation.
 
 ---
 
-## Phase 3 — Extract shared primitives into the SDK  ← next
+## Phase 3 — Extract shared primitives into the SDK  ✅ done
 
 Kill the duplication the review flagged, and expose the pieces Vortex will reuse in
 Phase 4. Non-breaking additive exports.
@@ -129,7 +129,7 @@ Phase 4. Non-breaking additive exports.
 
 ---
 
-## Phase 4 — Realign the Vortex bridge onto the SDK
+## Phase 4 — Realign the Vortex bridge onto the SDK  ← next
 
 Make Vortex an SDK *consumer* (at least for transport/bootstrap/sandbox), so it
 stops being a counter-example and the dead dependency becomes a real one.
