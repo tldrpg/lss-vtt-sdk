@@ -2,6 +2,7 @@
 // The Owlbear adapter is a separate entry point (./owlbear) so the core
 // never pulls @owlbear-rodeo/sdk. This mirrors the published exports map.
 export * from './types';
+export { SHEET_IFRAME_SANDBOX } from './constants';
 export { createRollBridge } from './createRollBridge';
 export { createSheetClient } from './createSheetClient';
 export { createBridgeSheetSource } from './createBridgeSheetSource';

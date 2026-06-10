@@ -5,9 +5,11 @@ import {
     BROADCAST_CHANNEL, DEFAULT_LABEL_TTL_MS, LABEL_METADATA_KEY,
 } from './constants';
 import { syncObrref } from './obrref';
+import { loadObrSdk } from './loadObrSdk';
+import { whenObrReady } from './whenObrReady';
 
-// Type-only imports are erased at build time, so they stay SSR-safe; the actual
-// runtime module is pulled in lazily via dynamic import inside `init()`.
+// Type-only import is erased at build time — stays SSR-safe; runtime module
+// is retrieved via loadObrSdk() which handles the preload/fallback contract.
 type OwlbearSdk = typeof import('@owlbear-rodeo/sdk');
 type Obr = OwlbearSdk['default'];
 
@@ -62,7 +64,7 @@ export class OwlbearAdapter implements VTTAdapter {
         // a client-side navigation (or a fresh chunk) dropped it.
         syncObrref();
 
-        const sdk = await this.loadSdk();
+        const sdk = await loadObrSdk();
         if (!sdk) {
             return false;
         }
@@ -85,7 +87,7 @@ export class OwlbearAdapter implements VTTAdapter {
         if (DEV) {
             console.info('[LSS/OBR] awaiting onReady (isReady =', this.obr.isReady, ')');
         }
-        await new Promise<void>((resolve) => { this.obr!.onReady(resolve); });
+        await whenObrReady(this.obr!);
         if (DEV) {
             console.info('[LSS/OBR] onReady fired — fetching player…');
         }
@@ -105,28 +107,6 @@ export class OwlbearAdapter implements VTTAdapter {
         }
 
         return true;
-    }
-
-    private async loadSdk(): Promise<OwlbearSdk | null> {
-        const host = window as unknown as { __lssObrSdk?: OwlbearSdk };
-        // Prefer the copy preloaded at client entry — it attached its message
-        // listener early enough to catch OBR's one-shot OBR_READY handshake.
-        // Wait briefly in case the preload import is still in flight.
-        for (let i = 0; i < 10 && !host.__lssObrSdk; i += 1) {
-            await new Promise<void>((resolve) => { window.setTimeout(resolve, 50); });
-        }
-        if (host.__lssObrSdk) {
-            return host.__lssObrSdk;
-        }
-        if (DEV) {
-            console.warn('[LSS/OBR] no preloaded SDK — importing now (may miss OBR_READY)');
-        }
-        try {
-            return await import('@owlbear-rodeo/sdk');
-        } catch (error) {
-            console.error('[LSS/OBR] SDK import failed:', error);
-            return null;
-        }
     }
 
     getSessionId(): string | undefined {
