@@ -35,11 +35,6 @@ void adapter.ready().then((ok) => {
     source.onRoll((roll) => {
         adapter.notify(formatRollMessage(roll), rollVariant(roll));
         adapter.broadcast({ type: 'dnd:roll', payload: roll });
-        void adapter.labelOverSelection(roll.total).then((placed) => {
-            if (!placed) {
-                adapter.notify('No label placed — select exactly one of your tokens on the map', 'warning');
-            }
-        });
     });
 
     // Relay rolls broadcast by other players as local toasts.

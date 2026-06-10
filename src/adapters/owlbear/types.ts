@@ -15,6 +15,5 @@ export interface ObrAdapter {
     notify(message: string, variant?: 'info' | 'success' | 'warning' | 'error'): void;
     broadcast(event: SheetEvent): void;
     onEvent(handler: (event: SheetEvent) => void): () => void;
-    labelOverSelection(text: string, ttlMs?: number): Promise<boolean>;
     dispose(): void;
 }

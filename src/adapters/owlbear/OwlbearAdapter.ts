@@ -1,9 +1,7 @@
 import type { SheetEvent } from '../../types';
 import type { NotifyVariant } from '../../formatRoll';
 import type { ObrAdapter, ObrPlayer } from './types';
-import {
-    BROADCAST_CHANNEL, DEFAULT_LABEL_TTL_MS, LABEL_METADATA_KEY,
-} from './constants';
+import { BROADCAST_CHANNEL } from './constants';
 import { syncObrref } from './obrref';
 import { loadObrSdk } from './loadObrSdk';
 import { whenObrReady } from './whenObrReady';
@@ -32,8 +30,6 @@ const NOTIFY_VARIANT: Record<NotifyVariant, 'INFO' | 'SUCCESS' | 'WARNING' | 'ER
  * and degrades silently; the broadcast/notification path is the guaranteed core.
  */
 export class OwlbearAdapter implements ObrAdapter {
-    private sdk: OwlbearSdk | null = null;
-
     private obr: Obr | null = null;
 
     private user: ObrPlayer | undefined;
@@ -68,7 +64,6 @@ export class OwlbearAdapter implements ObrAdapter {
         if (!sdk) {
             return false;
         }
-        this.sdk = sdk;
         this.obr = sdk.default;
         if (DEV) {
             console.info(
@@ -134,55 +129,6 @@ export class OwlbearAdapter implements ObrAdapter {
 
     notify(message: string, variant: NotifyVariant = 'info'): void {
         void this.obr?.notification.show(message, NOTIFY_VARIANT[variant]).catch(() => {});
-    }
-
-    async labelOverSelection(text: string, ttlMs: number = DEFAULT_LABEL_TTL_MS): Promise<boolean> {
-        const { obr, sdk } = this;
-        if (!obr || !sdk) {
-            return false;
-        }
-
-        try {
-            const selection = await obr.player.getSelection();
-            if (!selection || selection.length !== 1) {
-                if (DEV) {
-                    console.warn('[OwlbearAdapter] label skipped — selected tokens:', selection?.length ?? 0);
-                }
-                return false;
-            }
-
-            const [token] = await obr.scene.items.getItems(selection);
-            if (!token) {
-                if (DEV) {
-                    console.warn('[OwlbearAdapter] label skipped — selected item not found in scene');
-                }
-                return false;
-            }
-
-            const label = sdk.buildLabel()
-                .plainText(text)
-                .position(token.position)
-                .attachedTo(token.id)
-                .pointerHeight(0)
-                .disableHit(true)
-                .locked(true)
-                .layer('TEXT')
-                .metadata({ [LABEL_METADATA_KEY]: true })
-                .build();
-
-            await obr.scene.items.addItems([label]);
-            window.setTimeout(() => {
-                void obr.scene.items.deleteItems([label.id]).catch(() => {});
-            }, ttlMs);
-            return true;
-        } catch (error) {
-            // Scene not loaded / no permission — labels are an enhancement, not
-            // the contract. Log for diagnosis; the broadcast path keeps working.
-            if (DEV) {
-                console.warn('[OwlbearAdapter] label error:', error);
-            }
-            return false;
-        }
     }
 
     dispose(): void {
