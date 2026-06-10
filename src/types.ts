@@ -43,6 +43,7 @@ export type CapabilityOpName =
     | 'request-roll';
 
 /**
+ * @experimental
  * adjust: apply a signed delta to a numeric capability.
  * Sign convention: negative delta = subtract (damage), positive delta = add (heal/gain).
  * The sheet applies its own rules (temp HP absorption, resistances, clamping).
@@ -53,20 +54,21 @@ export interface CapabilityOpAdjust {
     delta: number;
 }
 
-/** set: overwrite a capability value outright. */
+/** @experimental set: overwrite a capability value outright. */
 export interface CapabilityOpSet {
     op: 'set';
     capabilityId: string;
     value: number | boolean | string;
 }
 
-/** toggle: flip a boolean capability. */
+/** @experimental toggle: flip a boolean capability. */
 export interface CapabilityOpToggle {
     op: 'toggle';
     capabilityId: string;
 }
 
 /**
+ * @experimental
  * add-tag: append a label to a tag-track capability (e.g. a condition).
  * Idempotent — if the value is already present, the sheet must ignore the command.
  */
@@ -77,6 +79,7 @@ export interface CapabilityOpAddTag {
 }
 
 /**
+ * @experimental
  * remove-tag: remove a label from a tag-track capability.
  * Removes the first occurrence. Assumes a well-behaved set (no duplicates in DnD5e conditions).
  */
@@ -86,7 +89,7 @@ export interface CapabilityOpRemoveTag {
     value: string;
 }
 
-/** request-roll: ask the sheet to roll a d20 check against an optional DC. */
+/** @experimental request-roll: ask the sheet to roll a d20 check against an optional DC. */
 export interface CapabilityOpRequestRoll {
     op: 'request-roll';
     capabilityId: string;
@@ -102,13 +105,14 @@ export type CapabilityOperation =
     | CapabilityOpRemoveTag
     | CapabilityOpRequestRoll;
 
-/** One capability entry in the sheet manifest. */
+/** @experimental One capability entry in the sheet manifest. */
 export interface CapabilityDescriptor {
     id: string;
     operations: CapabilityOpName[];
 }
 
 /**
+ * @experimental
  * Capability manifest — the sheet's public declaration of what the host may do.
  * Sent outbound by the sheet at handshake time; the host reads it to know which
  * dnd:command operations are valid for this member.
@@ -120,7 +124,7 @@ export interface CapabilityManifest {
     capabilities: CapabilityDescriptor[];
 }
 
-/** Outbound fact: HP values after the sheet has applied an adjust/set command. */
+/** @experimental Outbound fact: HP values after the sheet has applied an adjust/set command. */
 export interface HealthChangedPayload {
     characterId: string;
     current: number;
@@ -131,13 +135,20 @@ export interface HealthChangedPayload {
 /**
  * Everything that crosses the sheet↔VTT boundary.
  *
- * Outbound (sheet → host):  dnd:roll · dnd:manifest · dnd:health
- * Inbound  (host → sheet):  dnd:command
+ * | Type | Status | Direction |
+ * |------|--------|-----------|
+ * | `dnd:roll`     | stable       | sheet → host |
+ * | `dnd:manifest` | experimental | sheet → host |
+ * | `dnd:health`   | experimental | sheet → host |
+ * | `dnd:command`  | experimental | host → sheet |
  */
 export type SheetEvent =
     | { type: 'dnd:roll'; payload: DiceRollPayload }
+    /** @experimental */
     | { type: 'dnd:manifest'; payload: CapabilityManifest }
+    /** @experimental */
     | { type: 'dnd:health'; payload: HealthChangedPayload }
+    /** @experimental */
     | { type: 'dnd:command'; payload: CapabilityOperation };
 
 /**
@@ -151,15 +162,15 @@ export interface SheetSource {
 }
 
 /** Human-facing strings surfaced by the bridge — override to localize. */
-export interface SheetBridgeMessages {
+export interface RollBridgeMessages {
     /** Toast shown once the sheet connects to the table. */
     connected: string;
     /** Toast shown to the roller when a token label could not be placed. */
     labelHint: string;
 }
 
-export interface SheetBridgeOptions {
-    messages?: Partial<SheetBridgeMessages>;
+export interface RollBridgeOptions {
+    messages?: Partial<RollBridgeMessages>;
 }
 
 /**

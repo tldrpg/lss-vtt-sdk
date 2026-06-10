@@ -50,7 +50,7 @@ Vortex).
 
 ---
 
-## Phase 1 — Protocol naming migration (`dnd:*`)  ⚠️ breaking, lockstep
+## Phase 1 — Protocol naming migration (`dnd:*`)  ✅ done
 
 The only phase that crosses the wire boundary, so it needs a coordinated deploy of
 the sheet app and the bridges. Cheap now (0.1.0, single first-party producer);
@@ -76,7 +76,7 @@ backward-compat shim — there are no external consumers yet.
 
 ---
 
-## Phase 2 — Maturity tiering of the protocol
+## Phase 2 — Maturity tiering of the protocol  ✅ done
 
 Stop advertising the inbound contract as done; keep it as a typed reservation.
 
@@ -102,7 +102,7 @@ Stop advertising the inbound contract as done; keep it as a typed reservation.
 
 ---
 
-## Phase 3 — Extract shared primitives into the SDK
+## Phase 3 — Extract shared primitives into the SDK  ← next
 
 Kill the duplication the review flagged, and expose the pieces Vortex will reuse in
 Phase 4. Non-breaking additive exports.
@@ -220,6 +220,23 @@ Phase 7 — opportunistic, no fixed slot
 
 Phases 1–2 and 3→4→5 are two independent tracks; Phase 6 waits on 1–2. Land
 [`obr-bridge-init-retry.md`](./obr-bridge-init-retry.md) whenever convenient.
+
+## Deploy fixes applied (alongside Phase 1)  ✅ done
+
+Server-side fixes applied after the Phase 1 deploy exposed two issues:
+
+- **`X-Frame-Options: DENY` removed** from `general-security-headers.conf` — was
+  redundant with (and overriding) the `frame-ancestors` CSP directive, causing the
+  OBR extension to be blocked from framing the sheet.
+- **`page-data.json` fallback for dynamic character routes** — Gatsby exports a
+  single `[id]/page-data.json` template; real IDs produced 404 during client-side
+  navigation. Fixed with a regex location in nginx that rewrites
+  `/page-data/.../[real-id]/page-data.json` → `/page-data/.../[id]/page-data.json`.
+  Root cause was that server-level `try_files` intercepted requests before location
+  matching; moved to `location /`.
+- All `sites-enabled` configs converted to symlinks pointing to `sites-available`.
+
+---
 
 ## Explicitly out of scope
 

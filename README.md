@@ -28,13 +28,13 @@ npm install @owlbear-rodeo/sdk
 
 | Import | Contents |
 |--------|----------|
-| `@longstoryshort/vtt-sdk` | Core: types, `createSheetBridge`, `createSheetClient`, `createBridgeSheetSource`, `formatRollMessage` |
+| `@longstoryshort/vtt-sdk` | Core: types, `createRollBridge`, `createSheetClient`, `createBridgeSheetSource`, `formatRollMessage` |
 | `@longstoryshort/vtt-sdk/owlbear` | `OwlbearAdapter`, `syncObrref`, constants |
 
 ## Quick start — bridge side
 
 ```ts
-import { createSheetBridge, createBridgeSheetSource } from '@longstoryshort/vtt-sdk';
+import { createRollBridge, createBridgeSheetSource } from '@longstoryshort/vtt-sdk';
 import { OwlbearAdapter } from '@longstoryshort/vtt-sdk/owlbear';
 
 const adapter = new OwlbearAdapter();
@@ -43,7 +43,7 @@ const source = createBridgeSheetSource({
     allowedOrigins: ['https://longstoryshort.app'],
 });
 
-const dispose = createSheetBridge(source, adapter, {
+const dispose = createRollBridge(source, adapter, {
     messages: {
         connected: '🎲 Sheet connected',
         labelHint: 'Select exactly one token to place a roll label',
@@ -63,11 +63,11 @@ import { createSheetClient } from '@longstoryshort/vtt-sdk';
 const client = createSheetClient();
 
 // emit a roll to the bridge
-client.send({ type: 'DICE_ROLL', payload: { ... } });
+client.send({ type: 'dnd:roll', payload: { ... } });
 
 // receive inbound commands from the bridge
 const unsub = client.onEvent((event) => {
-    if (event.type === 'CAPABILITY_COMMAND') { /* handle damage, conditions, … */ }
+    if (event.type === 'dnd:command') { /* handle damage, conditions, … */ }
 });
 
 // cleanup
@@ -96,12 +96,14 @@ To adapt for your own VTT: copy `bridges/dnd/src/main.ts`, swap `OwlbearAdapter`
 
 ## Protocol events
 
-| Type | Direction | Description |
-|------|-----------|-------------|
-| `DICE_ROLL` | sheet → bridge | A roll result |
-| `MANIFEST` | sheet → bridge | Sheet capabilities at handshake |
-| `HEALTH_CHANGED` | sheet → bridge | HP after an adjust/set |
-| `CAPABILITY_COMMAND` | bridge → sheet | Narrow inbound ops (adjust HP, toggle condition, …) |
+| Type | Status | Direction | Description |
+|------|--------|-----------|-------------|
+| `dnd:roll`     | ✅ stable       | sheet → host | A roll result |
+| `dnd:manifest` | 🧪 reserved     | sheet → host | Sheet capabilities at handshake |
+| `dnd:health`   | 🧪 reserved     | sheet → host | HP after an adjust/set |
+| `dnd:command`  | 🧪 reserved     | host → sheet | Narrow inbound ops (adjust HP, toggle condition, …) |
+
+Reserved events are typed and functional — the sheet implements them — but the bridge-side wiring is considered experimental API and may change. Wire them directly via `BridgeSheetSource.onEvent` rather than through `createRollBridge`.
 
 ## License
 

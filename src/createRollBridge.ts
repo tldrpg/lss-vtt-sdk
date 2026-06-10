@@ -1,31 +1,34 @@
 import type {
-    SheetBridgeMessages, SheetBridgeOptions, SheetSource, VTTAdapter,
+    RollBridgeMessages, RollBridgeOptions, SheetSource, VTTAdapter,
 } from './types';
 import { formatRollMessage, rollVariant } from './formatRoll';
 
-const DEFAULT_MESSAGES: SheetBridgeMessages = {
+const DEFAULT_MESSAGES: RollBridgeMessages = {
     connected: '🎲 Sheet connected to the table',
     labelHint: 'No label placed — select exactly one of your tokens on the map',
 };
 
 /**
- * Wires a host {@link SheetSource} to a {@link VTTAdapter}. This is the whole
- * integration in one place, and it knows nothing about any specific sheet app or
- * any specific VTT:
+ * The default roll bridge — one opinionated policy, not the full protocol.
  *
+ * Wires {@link SheetSource} → {@link VTTAdapter} for the `dnd:roll` event only:
  *  - a roll on the sheet → local toast for the roller + broadcast to other
  *    clients + a transient label over the roller's selected token;
  *  - a roll broadcast by another client → local toast.
  *
+ * Inbound capability wiring (`dnd:command`, `dnd:manifest`, `dnd:health`) is
+ * deliberately out of scope here — wire those directly via
+ * {@link BridgeSheetSource.onEvent} when your bridge needs them.
+ *
  * Returns a dispose fn that tears down every subscription it created. The
  * adapter is left untouched — it may be shared and longer-lived than the bridge.
  */
-export function createSheetBridge(
+export function createRollBridge(
     source: SheetSource,
     adapter: VTTAdapter,
-    options: SheetBridgeOptions = {},
+    options: RollBridgeOptions = {},
 ): () => void {
-    const messages: SheetBridgeMessages = { ...DEFAULT_MESSAGES, ...options.messages };
+    const messages: RollBridgeMessages = { ...DEFAULT_MESSAGES, ...options.messages };
     const cleanups: Array<() => void> = [];
     let cancelled = false;
 

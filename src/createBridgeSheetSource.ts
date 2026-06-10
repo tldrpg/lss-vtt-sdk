@@ -19,7 +19,7 @@ export interface BridgeSheetSourceOptions {
     targetOrigin?: string;
 }
 
-/** A `SheetSource` (for `createSheetBridge`) plus raw access and inbound `send`. */
+/** A `SheetSource` (for `createRollBridge`) plus raw access and inbound `send`. */
 export interface BridgeSheetSource extends SheetSource {
     /** Subscribe to the sheet's capability manifest (sent once at handshake). Returns an unsubscribe fn. */
     onManifest(handler: (manifest: CapabilityManifest) => void): () => void;
@@ -33,7 +33,7 @@ export interface BridgeSheetSource extends SheetSource {
 /**
  * Bridge-side half of the postMessage transport. Runs in the bridge frame (the
  * VTT extension), listens to the embedded sheet iframe, and exposes a
- * `SheetSource` so `createSheetBridge` can drive the VTT adapter — without the
+ * `SheetSource` so `createRollBridge` can drive the VTT adapter — without the
  * bridge ever touching the sheet's internals.
  *
  * `contentWindow` is read live on every message/send, so it survives the sheet

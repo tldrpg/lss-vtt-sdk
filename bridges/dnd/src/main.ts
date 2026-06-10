@@ -1,6 +1,6 @@
 import * as obrSdk from '@owlbear-rodeo/sdk';
 import { syncObrref, OwlbearAdapter } from '@longstoryshort/vtt-sdk/owlbear';
-import { createBridgeSheetSource, createSheetBridge } from '@longstoryshort/vtt-sdk';
+import { createBridgeSheetSource, createRollBridge } from '@longstoryshort/vtt-sdk';
 
 // Restore obrref before the SDK reads it, and stash the already-imported
 // module so OwlbearAdapter.loadSdk() reuses it instead of a late dynamic
@@ -26,4 +26,4 @@ const source = createBridgeSheetSource({
     allowedOrigins: ['https://longstoryshort.app'],
 });
 
-createSheetBridge(source, new OwlbearAdapter());
+createRollBridge(source, new OwlbearAdapter());

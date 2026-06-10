@@ -2,7 +2,7 @@ import {
     describe, it, expect, vi,
 } from 'vitest';
 
-import { createSheetBridge } from './createSheetBridge';
+import { createRollBridge } from './createRollBridge';
 import type {
     DiceRollPayload, SheetEvent, SheetSource, VTTAdapter,
 } from './types';
@@ -55,10 +55,10 @@ function makeHarness(available = true) {
     };
 }
 
-describe('createSheetBridge', () => {
+describe('createRollBridge', () => {
     it('on a local roll: notifies the roller, broadcasts, and labels the token', async () => {
         const h = makeHarness();
-        createSheetBridge(h.source, h.adapter);
+        createRollBridge(h.source, h.adapter);
         await flush();
 
         h.emitRoll(makeRoll());
@@ -74,7 +74,7 @@ describe('createSheetBridge', () => {
     it('warns with the (overridable) label hint when no token could be labeled', async () => {
         const h = makeHarness();
         (h.adapter.labelOverSelection as ReturnType<typeof vi.fn>).mockResolvedValue(false);
-        createSheetBridge(h.source, h.adapter, { messages: { labelHint: 'pick a token' } });
+        createRollBridge(h.source, h.adapter, { messages: { labelHint: 'pick a token' } });
 
         h.emitRoll(makeRoll());
         await flush();
@@ -84,7 +84,7 @@ describe('createSheetBridge', () => {
 
     it('shows the connected message once the adapter is ready', async () => {
         const h = makeHarness();
-        createSheetBridge(h.source, h.adapter, { messages: { connected: 'connected!' } });
+        createRollBridge(h.source, h.adapter, { messages: { connected: 'connected!' } });
         await flush();
 
         expect(h.adapter.notify).toHaveBeenCalledWith('connected!', 'success');
@@ -92,7 +92,7 @@ describe('createSheetBridge', () => {
 
     it('relays a roll broadcast by another client as a toast', async () => {
         const h = makeHarness();
-        createSheetBridge(h.source, h.adapter);
+        createRollBridge(h.source, h.adapter);
         await flush();
 
         h.emitIncoming({ type: 'dnd:roll', payload: makeRoll({ characterName: 'Bob', total: '7' }) });
@@ -102,7 +102,7 @@ describe('createSheetBridge', () => {
 
     it('ignores rolls while the adapter is unavailable', () => {
         const h = makeHarness(false);
-        createSheetBridge(h.source, h.adapter);
+        createRollBridge(h.source, h.adapter);
 
         h.emitRoll(makeRoll());
 
@@ -111,7 +111,7 @@ describe('createSheetBridge', () => {
 
     it('dispose() stops forwarding rolls', async () => {
         const h = makeHarness();
-        const dispose = createSheetBridge(h.source, h.adapter);
+        const dispose = createRollBridge(h.source, h.adapter);
         await flush();
 
         dispose();
