@@ -14,6 +14,7 @@ import {
 import type { BridgeMessage } from './shared';
 
 let loggerOpen = false;
+let isGM = false;
 
 type OBRInstance = typeof obrSdk.default;
 declare global { interface Window { OBR: OBRInstance; } }
@@ -22,6 +23,13 @@ async function init() {
     window.OBR = obrSdk.default;
     await whenObrReady(window.OBR);
     console.log('[Vortex Bridge] OBR is ready');
+
+    // Only the GM's client is allowed to write the shared room binding — cached once
+    // and kept in sync via onChange, since role can't change mid-session in practice.
+    isGM = (await window.OBR.player.getRole()) === 'GM';
+    window.OBR.player.onChange((player) => {
+        isGM = player.role === 'GM';
+    });
 
     const contentEl = document.getElementById('content')!;
 
@@ -98,7 +106,9 @@ async function init() {
             return;
         }
 
-        if (event.data.type === 'vortex:roomSelected') {
+        // Only the GM owns the shared room binding — a player's client must never be
+        // able to select or clear the room for the whole table.
+        if (isGM && event.data.type === 'vortex:roomSelected') {
             window.OBR.room.setMetadata({
                 [ROOM_METADATA_KEY]: event.data.roomId,
             }).catch((error: unknown) => {
@@ -106,7 +116,7 @@ async function init() {
             });
         }
 
-        if (event.data.type === 'vortex:roomNotFound') {
+        if (isGM && event.data.type === 'vortex:roomNotFound') {
             window.OBR.room.setMetadata({
                 [ROOM_METADATA_KEY]: undefined,
             }).catch((error: unknown) => {
