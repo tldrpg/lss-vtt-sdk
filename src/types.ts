@@ -123,14 +123,52 @@ export interface HealthChangedPayload {
 }
 
 /**
+ * @experimental
+ * A group (docs: access-groups.md) that was just created or picked in an LSS-hosted
+ * group-manager page (e.g. `iframe/group/`, `iframe/groups/`) embedded by the host's own
+ * integration — not a character sheet. The host must persist `groupId`/`code` on its own
+ * side and pass `code` back via that page's `?code=` param on later loads; without it,
+ * every new session creates a fresh group and strands previously-connected players.
+ */
+export interface GroupSelectedPayload {
+    groupId: string;
+    code: string;
+    name: string;
+}
+
+/**
+ * @experimental
+ * Pushed into a specific player's embedded sheet to offer joining a group — the sheet
+ * itself creates the actual membership (via its own logged-in session), this only
+ * delivers the code the host learned from a `lss:group-selected` event elsewhere. `null`
+ * clears a previously delivered code (e.g. the host lost track of its group).
+ */
+export interface GroupCodePayload {
+    code: string | null;
+}
+
+/**
+ * @experimental
+ * Outbound fact: whether this embedded character is currently a member of the group
+ * whose code it was sent via `dnd:group-code`. Lets the host draw its own connected/
+ * not-connected roster without us providing a party-list UI of our own.
+ */
+export interface GroupStatusPayload {
+    connected: boolean;
+}
+
+/**
  * Everything that crosses the sheet↔VTT boundary.
  *
  * | Type | Status | Direction |
  * |------|--------|-----------|
- * | `dnd:roll`     | stable       | sheet → host |
- * | `dnd:manifest` | experimental | sheet → host |
- * | `dnd:health`   | experimental | sheet → host |
- * | `dnd:command`  | experimental | host → sheet |
+ * | `dnd:roll`          | stable       | sheet → host |
+ * | `dnd:manifest`      | experimental | sheet → host |
+ * | `dnd:health`        | experimental | sheet → host |
+ * | `dnd:command`       | experimental | host → sheet |
+ * | `lss:group-selected`| experimental | group-manager page → host |
+ * | `dnd:group-code`    | experimental | host → sheet |
+ * | `dnd:group-status`  | experimental | sheet → host |
  */
 export type SheetEvent =
     | { type: 'dnd:roll'; payload: DiceRollPayload }
@@ -139,7 +177,13 @@ export type SheetEvent =
     /** @experimental */
     | { type: 'dnd:health'; payload: HealthChangedPayload }
     /** @experimental */
-    | { type: 'dnd:command'; payload: CapabilityOperation };
+    | { type: 'dnd:command'; payload: CapabilityOperation }
+    /** @experimental */
+    | { type: 'lss:group-selected'; payload: GroupSelectedPayload }
+    /** @experimental */
+    | { type: 'dnd:group-code'; payload: GroupCodePayload }
+    /** @experimental */
+    | { type: 'dnd:group-status'; payload: GroupStatusPayload };
 
 /**
  * Implemented by the host (the character-sheet app) so the bridge stays

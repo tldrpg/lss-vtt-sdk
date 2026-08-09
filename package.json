@@ -1,6 +1,6 @@
 {
   "name": "@longstoryshort/vtt-sdk",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Embed a longstoryshort.app character sheet in any virtual tabletop via iframe and postMessage",
   "license": "MIT",
   "type": "module",

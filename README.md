@@ -90,8 +90,16 @@ To install in OBR: Extensions → Add extension → paste the manifest URL above
 | `dnd:manifest` | 🧪 reserved | sheet → host | Sheet capabilities at handshake |
 | `dnd:health` | 🧪 reserved | sheet → host | HP after an adjust/set |
 | `dnd:command` | 🧪 reserved | host → sheet | Inbound ops (adjust HP, toggle condition, …) |
+| `lss:group-selected` | 🧪 reserved | group-manager page → host | A group was created/picked — persist `groupId`/`code` |
+| `dnd:group-code` | 🧪 reserved | host → sheet | Offer a group to a specific player's sheet |
+| `dnd:group-status` | 🧪 reserved | sheet → host | Is this character currently a member of that group |
 
 Reserved events are typed and wired end-to-end, but the bridge-side API is experimental. Subscribe via `source.onEvent` directly.
+
+The `lss:group-selected`/`dnd:group-code`/`dnd:group-status` trio is "Level 2" — shared
+rights between players at a table, without adopting the Vortex room hub. See
+[docs/plans/level-2-groups.md](docs/plans/level-2-groups.md) for the full flow and why
+there is no shared-metadata dependency like the Owlbear bridges use.
 
 ## License
 

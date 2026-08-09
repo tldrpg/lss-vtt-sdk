@@ -32,6 +32,11 @@ const health: SheetEvent = {
     },
 };
 
+const groupStatus: SheetEvent = {
+    type: 'dnd:group-status',
+    payload: { connected: true },
+};
+
 function makeHarness() {
     let listener: ((event: MessageEvent) => void) | undefined;
     const host: MessageHost = {
@@ -138,12 +143,29 @@ describe('createBridgeSheetSource', () => {
         // its wiring on an async init (OBR's `ready()`) gets a chance to subscribe.
         h.deliver({ __lssSheetSdk: 2, event: manifest });
         h.deliver({ __lssSheetSdk: 2, event: health });
+        h.deliver({ __lssSheetSdk: 2, event: groupStatus });
 
         const handler = vi.fn();
         source.onEvent(handler);
 
         expect(handler).toHaveBeenCalledWith(manifest);
         expect(handler).toHaveBeenCalledWith(health);
+        expect(handler).toHaveBeenCalledWith(groupStatus);
+    });
+
+    it('replays the latest dnd:group-status, so a late-opening "who\'s connected" panel is correct immediately', () => {
+        const h = makeHarness();
+        const source = createBridgeSheetSource({ iframe: h.iframe, host: h.host });
+
+        const disconnected: SheetEvent = { type: 'dnd:group-status', payload: { connected: false } };
+        h.deliver({ __lssSheetSdk: 2, event: groupStatus });
+        h.deliver({ __lssSheetSdk: 2, event: disconnected });
+
+        const handler = vi.fn();
+        source.onEvent(handler);
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(handler).toHaveBeenCalledWith(disconnected);
     });
 
     it('replays only the latest of each state event type', () => {

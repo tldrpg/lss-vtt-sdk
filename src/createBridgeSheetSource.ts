@@ -23,8 +23,14 @@ export interface BridgeSheetSourceOptions {
  * Event types that describe *current state* rather than something that happened at a
  * point in time. The last one of each is replayed to handlers that subscribe late —
  * see `onEvent`. Rolls are deliberately absent: replaying a roll would announce it twice.
+ *
+ * `dnd:group-status` belongs here for the same reason as `dnd:manifest`/`dnd:health`: a
+ * host subscribing after the sheet already reported its connection status (e.g. opening a
+ * "who's connected" panel later) must see the current value immediately, not wait for it
+ * to change. `lss:group-selected`/`dnd:group-code` are one-off facts of a single setup
+ * flow, not persistent sheet state, so they are deliberately not replayed.
  */
-const STATE_EVENT_TYPES: ReadonlySet<SheetEvent['type']> = new Set(['dnd:manifest', 'dnd:health']);
+const STATE_EVENT_TYPES: ReadonlySet<SheetEvent['type']> = new Set(['dnd:manifest', 'dnd:health', 'dnd:group-status']);
 
 /** Bridge-side source: `onRoll` convenience + full `onEvent` access + inbound `send`. */
 export interface BridgeSheetSource extends SheetSource {
