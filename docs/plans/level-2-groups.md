@@ -9,10 +9,10 @@ deliberately out of scope here: it already gets this via the Vortex bridge
 shared rights without adopting Vortex.
 
 **Status of this doc:** the protocol (event types below, `dnd:group-status` replay) is
-implemented in this repo. The LSS-hosted pages it depends on (`iframe/group/`,
-`iframe/groups/`) and the sheet-side join popup are not built yet — this document is the
-agreed contract they will be built against, written down ahead of the code so the two
-sides don't have to renegotiate the shape later.
+implemented in this repo, and the LSS-hosted pages it depends on (`iframe/group/`,
+`iframe/groups/`) plus the sheet-side join popup are implemented in `storyview` against
+exactly this contract. Not yet published to npm — an integrator gets the new event types
+only after the version bump.
 
 ## Why not OBR-style shared room metadata
 
@@ -38,14 +38,21 @@ replayed.
 
 ## Integration flow
 
-1. **First setup.** Embed `iframe/group/` (LSS-hosted, not built yet) somewhere in your
+0. **Register your table.** Two things happen at once: your origin is added to the CSP
+   `frame-ancestors` allowlist (without it a browser will not let you embed our pages at
+   all), and you are issued a **client slug**. Every LSS group page must be embedded with
+   `?client=<your slug>`. The slug — not your domain — is what keeps your GMs' groups
+   separate from the ones they made at other tables, so it survives you moving to another
+   domain. You cannot pick it yourself: an unregistered slug is refused.
+1. **First setup.** Embed `iframe/group/?client=<slug>` (LSS-hosted) somewhere in your
    own GM-only UI — it gates on LSS login the same way any embedded sheet does. The GM
    creates a group; the page posts `lss:group-selected` up. **You must persist
    `groupId`/`code` in your own room/session data.** Without it, every new session at the
    table creates a fresh group and stranded previously-connected players.
-2. **Reconnect.** On later sessions, embed `iframe/group/?code=<your saved code>` instead
-   of a bare `iframe/group/` — this is a status check, not a picker; it will never show
-   you a list of other groups you own (see "Why no picker" below).
+2. **Reconnect.** On later sessions, embed
+   `iframe/group/?client=<slug>&code=<your saved code>` instead of a bare create screen —
+   this is a status check, not a picker; it will never show you a list of other groups you
+   own (see "Why no picker" below).
 3. **Reconnect after a long gap.** Same as above — a group with no activity for a while
    is soft-archived server-side, and the owner-gated reconnect endpoint clears that
    automatically the moment its real owner reconnects with the saved code. No special
@@ -53,7 +60,7 @@ replayed.
 4. **Connecting a player.** Whenever you decide to (player joins your table, GM clicks
    "invite", etc.), call `source.send({ type: 'dnd:group-code', payload: { code } })` on
    that player's existing Level 1 `createBridgeSheetSource` instance — the same one used
-   for rolls/manifest/health. The sheet (once its own popup UI exists) creates the actual
+   for rolls/manifest/health. The sheet asks the player and creates the actual
    membership itself, through its own logged-in session — never silently.
 5. **Drawing your own "who's connected" list.** Subscribe to `dnd:group-status` on each
    player's source the same way you already subscribe to rolls. No party-list UI is
@@ -65,9 +72,11 @@ replayed.
 `iframe/group/` intentionally does not offer "pick one of your existing groups" inline.
 A GM opening it without a saved code (because a session lost track of one) could easily
 attach a brand-new table to an unrelated, older group by mistake. A separate,
-opt-in `iframe/groups/` route exists for integrators who deliberately want to show the
-GM's full group list for some purpose of their own — it is not part of the default setup
-flow, and you should not embed it as a substitute for persisting `groupId`/`code`.
+opt-in `iframe/groups/?client=<slug>` route exists for integrators who deliberately want to
+show the GM's group list for some purpose of their own — it is not part of the default
+setup flow, and you should not embed it as a substitute for persisting `groupId`/`code`.
+It lists only the groups made at *your* table (that is what the slug is for), never the
+GM's groups from someone else's integration.
 
 ## What this repo does not do for you
 
