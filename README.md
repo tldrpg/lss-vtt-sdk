@@ -61,8 +61,14 @@ source.dispose();
 
 ## Documentation
 
-- [SDK guide](docs/sdk-guide.md) — sandbox requirements, receiving events, protocol reference, utilities. Start here regardless of your VTT architecture.
-- [Bridge guide](docs/bridge-guide.md) — for VTTs that use an extension/plugin model and need a separate static bridge page. Includes the full annotated OBR bridge and `OwlbearAdapter` reference.
+The full guides — sandbox requirements, protocol reference, utilities, and the annotated
+bridge/`OwlbearAdapter` reference — live in the Long Story Short docs, not in this repo:
+
+- [SDK guide](https://longstoryshort.app/doc/developers/embedding/sdk-guide/) — start here regardless of your VTT architecture.
+- [Bridge guide](https://longstoryshort.app/doc/developers/embedding/bridge-guide/) — for VTTs that use an extension/plugin model and need a separate static bridge page.
+
+This repo keeps the code: the SDK source, the bridge template, and the deployed Owlbear
+Rodeo reference bridge below.
 
 ## Reference bridge — Owlbear Rodeo (D&D 5e)
 

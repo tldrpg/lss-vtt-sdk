@@ -19,12 +19,32 @@ export interface BridgeSheetSourceOptions {
     targetOrigin?: string;
 }
 
+/**
+ * Event types that describe *current state* rather than something that happened at a
+ * point in time. The last one of each is replayed to handlers that subscribe late —
+ * see `onEvent`. Rolls are deliberately absent: replaying a roll would announce it twice.
+ */
+const STATE_EVENT_TYPES: ReadonlySet<SheetEvent['type']> = new Set(['dnd:manifest', 'dnd:health']);
+
 /** Bridge-side source: `onRoll` convenience + full `onEvent` access + inbound `send`. */
 export interface BridgeSheetSource extends SheetSource {
-    /** Subscribe to every event coming from the sheet. Returns an unsubscribe fn. */
+    /**
+     * Subscribe to every event coming from the sheet. Returns an unsubscribe fn.
+     *
+     * The sheet announces its state (`dnd:manifest`, and `dnd:health` as soon as the
+     * character has loaded) without waiting to be asked, so a handler registered after
+     * the VTT finishes its own async init would otherwise miss it and leave the token
+     * blank. The last state event of each type is therefore replayed to a new handler.
+     */
     onEvent(handler: (event: SheetEvent) => void): () => void;
-    /** Post an inbound command to the sheet (e.g. `dnd:command`). */
-    send(event: SheetEvent): void;
+    /**
+     * Post an inbound command to the sheet (e.g. `dnd:command`), addressed to this
+     * bridge's specific iframe. Returns `false` — an explicit rejection, not a
+     * silent no-op — when the sheet's `contentWindow` is unavailable (the panel is
+     * closed, the iframe was removed, or it hasn't loaded yet); `true` means the
+     * message was posted, not that the sheet necessarily handled it.
+     */
+    send(event: SheetEvent): boolean;
     dispose(): void;
 }
 
@@ -42,6 +62,7 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
     const { iframe, allowedOrigins } = options;
 
     const handlers = new Set<(event: SheetEvent) => void>();
+    const lastStateEvents = new Map<SheetEvent['type'], SheetEvent>();
 
     const listener = (event: MessageEvent): void => {
         // Only honor messages from our embedded sheet (its current contentWindow)…
@@ -56,6 +77,9 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
         if (!sheetEvent) {
             return;
         }
+        if (STATE_EVENT_TYPES.has(sheetEvent.type)) {
+            lastStateEvents.set(sheetEvent.type, sheetEvent);
+        }
         handlers.forEach((handler) => handler(sheetEvent));
     };
 
@@ -63,25 +87,34 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
         host.addEventListener('message', listener);
     }
 
+    const subscribe = (handler: (event: SheetEvent) => void): (() => void) => {
+        handlers.add(handler);
+        lastStateEvents.forEach((event) => handler(event));
+        return () => { handlers.delete(handler); };
+    };
+
     return {
         onRoll(handler: (roll: DiceRollPayload) => void): () => void {
-            const wrapped = (event: SheetEvent): void => {
+            // No replay reaches this one: rolls are never stored as state.
+            return subscribe((event: SheetEvent): void => {
                 if (event.type === 'dnd:roll') {
                     handler(event.payload);
                 }
-            };
-            handlers.add(wrapped);
-            return () => { handlers.delete(wrapped); };
+            });
         },
         onEvent(handler: (event: SheetEvent) => void): () => void {
-            handlers.add(handler);
-            return () => { handlers.delete(handler); };
+            return subscribe(handler);
         },
-        send(event: SheetEvent): void {
-            iframe.contentWindow?.postMessage(wrapEnvelope(event), targetOrigin);
+        send(event: SheetEvent): boolean {
+            if (!iframe.contentWindow) {
+                return false;
+            }
+            iframe.contentWindow.postMessage(wrapEnvelope(event), targetOrigin);
+            return true;
         },
         dispose(): void {
             handlers.clear();
+            lastStateEvents.clear();
             if (host) {
                 host.removeEventListener('message', listener);
             }
