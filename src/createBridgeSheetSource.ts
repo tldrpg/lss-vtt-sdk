@@ -24,27 +24,36 @@ export interface BridgeSheetSourceOptions {
  * point in time. The last one of each is replayed to handlers that subscribe late —
  * see `onEvent`. Rolls are deliberately absent: replaying a roll would announce it twice.
  *
- * `dnd:group-status` belongs here for the same reason as `dnd:manifest`/`dnd:health`: a
+ * `lss:group-status` belongs here for the same reason as `lss:manifest`/`dnd:health`: a
  * host subscribing after the sheet already reported its connection status (e.g. opening a
  * "who's connected" panel later) must see the current value immediately, not wait for it
- * to change. `lss:group-selected`/`dnd:group-code` are one-off facts of a single setup
+ * to change. `lss:group-selected`/`lss:group-code` are one-off facts of a single setup
  * flow, not persistent sheet state, so they are deliberately not replayed.
  */
-const STATE_EVENT_TYPES: ReadonlySet<SheetEvent['type']> = new Set(['dnd:manifest', 'dnd:health', 'dnd:group-status']);
+const STATE_EVENT_TYPES: ReadonlySet<SheetEvent['type']> = new Set(['lss:manifest', 'dnd:health', 'lss:group-status']);
+
+/**
+ * `dnd:roll` is the legacy name of `lss:roll`, and the sheet puts both on the wire so
+ * that bridges built against ≤0.6.0 keep working. A host on this version must never see
+ * the pair — one roll, one event — so the legacy copy is dropped on arrival rather than
+ * forwarded. Goes away together with the sheet-side duplicate, once our own bridges are
+ * redeployed on 0.7.0.
+ */
+const LEGACY_ALIASED_TYPES: ReadonlySet<string> = new Set(['dnd:roll']);
 
 /** Bridge-side source: `onRoll` convenience + full `onEvent` access + inbound `send`. */
 export interface BridgeSheetSource extends SheetSource {
     /**
      * Subscribe to every event coming from the sheet. Returns an unsubscribe fn.
      *
-     * The sheet announces its state (`dnd:manifest`, and `dnd:health` as soon as the
+     * The sheet announces its state (`lss:manifest`, and `dnd:health` as soon as the
      * character has loaded) without waiting to be asked, so a handler registered after
      * the VTT finishes its own async init would otherwise miss it and leave the token
      * blank. The last state event of each type is therefore replayed to a new handler.
      */
     onEvent(handler: (event: SheetEvent) => void): () => void;
     /**
-     * Post an inbound command to the sheet (e.g. `dnd:command`), addressed to this
+     * Post an inbound command to the sheet (e.g. `lss:command`), addressed to this
      * bridge's specific iframe. Returns `false` — an explicit rejection, not a
      * silent no-op — when the sheet's `contentWindow` is unavailable (the panel is
      * closed, the iframe was removed, or it hasn't loaded yet); `true` means the
@@ -83,6 +92,9 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
         if (!sheetEvent) {
             return;
         }
+        if (LEGACY_ALIASED_TYPES.has(sheetEvent.type)) {
+            return;
+        }
         if (STATE_EVENT_TYPES.has(sheetEvent.type)) {
             lastStateEvents.set(sheetEvent.type, sheetEvent);
         }
@@ -103,7 +115,7 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
         onRoll(handler: (roll: DiceRollPayload) => void): () => void {
             // No replay reaches this one: rolls are never stored as state.
             return subscribe((event: SheetEvent): void => {
-                if (event.type === 'dnd:roll') {
+                if (event.type === 'lss:roll') {
                     handler(event.payload);
                 }
             });

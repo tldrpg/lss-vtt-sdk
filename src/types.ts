@@ -105,7 +105,7 @@ export interface CapabilityDescriptor {
  * @experimental
  * Capability manifest — the sheet's public declaration of what the host may do.
  * Sent outbound by the sheet at handshake time; the host reads it to know which
- * dnd:command operations are valid for this member.
+ * `lss:command` operations are valid for this member.
  */
 export interface CapabilityManifest {
     version: '1';
@@ -150,7 +150,7 @@ export interface GroupCodePayload {
 /**
  * @experimental
  * Outbound fact: whether this embedded character is currently a member of the group
- * whose code it was sent via `dnd:group-code`. Lets the host draw its own connected/
+ * whose code it was sent via `lss:group-code`. Lets the host draw its own connected/
  * not-connected roster without us providing a party-list UI of our own.
  */
 export interface GroupStatusPayload {
@@ -160,30 +160,52 @@ export interface GroupStatusPayload {
 /**
  * Everything that crosses the sheet↔VTT boundary.
  *
+ * The prefix says **whose vocabulary the payload speaks**, not which frame carries it:
+ *
+ * - `lss:` — the platform's own protocol, independent of any game system. A group is a
+ *   group whether it holds D&D sheets, Anima sheets or monsters; a roll is a formula, a
+ *   breakdown and a total in every system we have. These names are shared by every sheet
+ *   product we ship.
+ * - `dnd:` — vocabulary that only makes sense for the D&D 5e sheet, because the payload
+ *   describes that system's own concepts. Another sheet product would need a different
+ *   payload here, not the same one under a different prefix.
+ *
  * | Type | Status | Direction |
  * |------|--------|-----------|
- * | `dnd:roll`          | stable       | sheet → host |
- * | `dnd:manifest`      | experimental | sheet → host |
+ * | `lss:roll`          | stable       | sheet → host |
+ * | `dnd:roll`          | deprecated   | sheet → host |
+ * | `lss:manifest`      | experimental | sheet → host |
+ * | `lss:command`       | experimental | host → sheet |
  * | `dnd:health`        | experimental | sheet → host |
- * | `dnd:command`       | experimental | host → sheet |
  * | `lss:group-selected`| experimental | group-manager page → host |
- * | `dnd:group-code`    | experimental | host → sheet |
- * | `dnd:group-status`  | experimental | sheet → host |
+ * | `lss:group-code`    | experimental | host → sheet |
+ * | `lss:group-status`  | experimental | sheet → host |
  */
 export type SheetEvent =
+    | { type: 'lss:roll'; payload: DiceRollPayload }
+    /**
+     * @deprecated Legacy name for `lss:roll`, kept only so bridges built against
+     * ≤0.6.0 keep receiving rolls. The sheet emits both; this SDK delivers only
+     * `lss:roll` to handlers. Dropped once our own bridges are redeployed.
+     */
     | { type: 'dnd:roll'; payload: DiceRollPayload }
     /** @experimental */
-    | { type: 'dnd:manifest'; payload: CapabilityManifest }
+    | { type: 'lss:manifest'; payload: CapabilityManifest }
     /** @experimental */
+    | { type: 'lss:command'; payload: CapabilityOperation }
+    /**
+     * @experimental
+     * D&D-specific: the payload is 5e's own health model (temp HP on top of a
+     * current/max pool). The system-agnostic path to the same numbers is the
+     * capability model — `lss:manifest` declares them, `lss:command` operates them.
+     */
     | { type: 'dnd:health'; payload: HealthChangedPayload }
-    /** @experimental */
-    | { type: 'dnd:command'; payload: CapabilityOperation }
     /** @experimental */
     | { type: 'lss:group-selected'; payload: GroupSelectedPayload }
     /** @experimental */
-    | { type: 'dnd:group-code'; payload: GroupCodePayload }
+    | { type: 'lss:group-code'; payload: GroupCodePayload }
     /** @experimental */
-    | { type: 'dnd:group-status'; payload: GroupStatusPayload };
+    | { type: 'lss:group-status'; payload: GroupStatusPayload };
 
 /**
  * Implemented by the host (the character-sheet app) so the bridge stays

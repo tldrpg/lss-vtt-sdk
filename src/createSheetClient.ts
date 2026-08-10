@@ -51,6 +51,15 @@ export function createSheetClient(options: SheetClientOptions = {}): SheetClient
                 return;
             }
             target.postMessage(wrapEnvelope(event), targetOrigin);
+
+            // Transitional duplicate: bridges built against ≤0.6.0 listen for the old
+            // `dnd:roll` name and would go silent the moment the sheet stopped sending
+            // it. Hosts on 0.7.0+ drop this copy on arrival (createBridgeSheetSource),
+            // so nobody sees a roll twice. Delete both halves once our own bridges are
+            // redeployed — the sheet is the only emitter, so that is the whole migration.
+            if (event.type === 'lss:roll') {
+                target.postMessage(wrapEnvelope({ type: 'dnd:roll', payload: event.payload }), targetOrigin);
+            }
         },
         onEvent(handler: (event: SheetEvent) => void): () => void {
             handlers.add(handler);

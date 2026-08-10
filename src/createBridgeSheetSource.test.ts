@@ -7,7 +7,7 @@ import type { SheetFrameRef } from './createBridgeSheetSource';
 import type { MessageHost, SheetEvent } from './types';
 
 const roll: SheetEvent = {
-    type: 'dnd:roll',
+    type: 'lss:roll',
     payload: {
         characterId: 'c1',
         characterName: 'Alice',
@@ -21,7 +21,7 @@ const roll: SheetEvent = {
 };
 
 const manifest: SheetEvent = {
-    type: 'dnd:manifest',
+    type: 'lss:manifest',
     payload: { version: '1', sheetSystem: 'dnd5e', capabilities: [] },
 };
 
@@ -33,7 +33,7 @@ const health: SheetEvent = {
 };
 
 const groupStatus: SheetEvent = {
-    type: 'dnd:group-status',
+    type: 'lss:group-status',
     payload: { connected: true },
 };
 
@@ -58,7 +58,7 @@ function makeHarness() {
 }
 
 describe('createBridgeSheetSource', () => {
-    it('onRoll() delivers dnd:roll payloads from the sheet iframe', () => {
+    it('onRoll() delivers lss:roll payloads from the sheet iframe', () => {
         const h = makeHarness();
         const handler = vi.fn();
         createBridgeSheetSource({ iframe: h.iframe, host: h.host }).onRoll(handler);
@@ -66,6 +66,21 @@ describe('createBridgeSheetSource', () => {
         h.deliver({ __lssSheetSdk: 2, event: roll });
 
         expect(handler).toHaveBeenCalledWith(roll.payload);
+    });
+
+    it('drops the legacy dnd:roll copy, so a roll is delivered once', () => {
+        const h = makeHarness();
+        const onRoll = vi.fn();
+        const onEvent = vi.fn();
+        const source = createBridgeSheetSource({ iframe: h.iframe, host: h.host });
+        source.onRoll(onRoll);
+        source.onEvent(onEvent);
+
+        h.deliver({ __lssSheetSdk: 2, event: roll });
+        h.deliver({ __lssSheetSdk: 2, event: { type: 'dnd:roll', payload: roll.payload } });
+
+        expect(onRoll).toHaveBeenCalledTimes(1);
+        expect(onEvent).toHaveBeenCalledTimes(1);
     });
 
     it('ignores messages from a window other than the sheet iframe', () => {
@@ -153,11 +168,11 @@ describe('createBridgeSheetSource', () => {
         expect(handler).toHaveBeenCalledWith(groupStatus);
     });
 
-    it('replays the latest dnd:group-status, so a late-opening "who\'s connected" panel is correct immediately', () => {
+    it('replays the latest lss:group-status, so a late-opening "who\'s connected" panel is correct immediately', () => {
         const h = makeHarness();
         const source = createBridgeSheetSource({ iframe: h.iframe, host: h.host });
 
-        const disconnected: SheetEvent = { type: 'dnd:group-status', payload: { connected: false } };
+        const disconnected: SheetEvent = { type: 'lss:group-status', payload: { connected: false } };
         h.deliver({ __lssSheetSdk: 2, event: groupStatus });
         h.deliver({ __lssSheetSdk: 2, event: disconnected });
 

@@ -86,17 +86,23 @@ To install in OBR: Extensions → Add extension → paste the manifest URL above
 
 | Type | Status | Direction | Description |
 |------|--------|-----------|-------------|
-| `dnd:roll` | ✅ stable | sheet → host | A roll result |
-| `dnd:manifest` | 🧪 reserved | sheet → host | Sheet capabilities at handshake |
+| `lss:roll` | ✅ stable | sheet → host | A roll result |
+| `dnd:roll` | ⚠️ deprecated | sheet → host | Legacy name of `lss:roll` — still on the wire for bridges built against ≤0.6.0, never delivered to handlers on 0.7.0+ |
+| `lss:manifest` | 🧪 reserved | sheet → host | Sheet capabilities at handshake |
+| `lss:command` | 🧪 reserved | host → sheet | Inbound ops (adjust HP, toggle condition, …) |
 | `dnd:health` | 🧪 reserved | sheet → host | HP after an adjust/set |
-| `dnd:command` | 🧪 reserved | host → sheet | Inbound ops (adjust HP, toggle condition, …) |
 | `lss:group-selected` | 🧪 reserved | group-manager page → host | A group was created/picked — persist `groupId`/`code` |
-| `dnd:group-code` | 🧪 reserved | host → sheet | Offer a group to a specific player's sheet |
-| `dnd:group-status` | 🧪 reserved | sheet → host | Is this character currently a member of that group |
+| `lss:group-code` | 🧪 reserved | host → sheet | Offer a group to a specific player's sheet |
+| `lss:group-status` | 🧪 reserved | sheet → host | Is this character currently a member of that group |
 
 Reserved events are typed and wired end-to-end, but the bridge-side API is experimental. Subscribe via `source.onEvent` directly.
 
-The `lss:group-selected`/`dnd:group-code`/`dnd:group-status` trio is "Level 2" — shared
+The prefix says **whose vocabulary the payload speaks**: `lss:` is the platform protocol,
+shared by every sheet product we ship, and `dnd:` is reserved for payloads that only make
+sense for the D&D 5e sheet — such as `dnd:health`, which carries 5e's own temp-HP model.
+The system-agnostic route to the same numbers is `lss:manifest` + `lss:command`.
+
+The `lss:group-selected`/`lss:group-code`/`lss:group-status` trio is "Level 2" — shared
 rights between players at a table, without adopting the Vortex room hub. See
 [docs/plans/level-2-groups.md](docs/plans/level-2-groups.md) for the full flow and why
 there is no shared-metadata dependency like the Owlbear bridges use.

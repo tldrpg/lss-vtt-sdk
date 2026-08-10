@@ -8,11 +8,16 @@ deliberately out of scope here: it already gets this via the Vortex bridge
 (`bridges/vortex`), so the mechanism below targets any *other* integration that wants
 shared rights without adopting Vortex.
 
-**Status of this doc:** the protocol (event types below, `dnd:group-status` replay) is
-implemented in this repo, and the LSS-hosted pages it depends on (`iframe/group/`,
-`iframe/groups/`) plus the sheet-side join popup are implemented in `storyview` against
-exactly this contract. Not yet published to npm — an integrator gets the new event types
-only after the version bump.
+**Status of this doc:** shipped. The protocol (event types below, `lss:group-status`
+replay) is in npm from 0.7.0, the LSS-hosted pages it depends on (`iframe/group/`,
+`iframe/groups/`) and the sheet-side join popup are live in `storyview`, and the public
+guide is at `/doc/developers/embedding/groups/`.
+
+**On the `lss:` prefix.** The prefix says whose vocabulary the payload speaks, not which
+frame carries it. A group is the same group whether it holds D&D sheets, Anima sheets or
+monsters, so all three events are platform-level `lss:` — `anima:group-code` would be a
+second dialect for one entity. 0.6.0 shipped `dnd:group-code`/`dnd:group-status` for half
+a day; they were renamed before any integrator existed, without a compatibility alias.
 
 ## Why not OBR-style shared room metadata
 
@@ -28,10 +33,10 @@ primitive, just three new event types.
 | Type | Direction | Payload |
 |------|-----------|---------|
 | `lss:group-selected` | group-manager page → host | `{ groupId, code, name }` |
-| `dnd:group-code` | host → player's sheet | `{ code: string \| null }` |
-| `dnd:group-status` | sheet → host | `{ connected: boolean }` |
+| `lss:group-code` | host → player's sheet | `{ code: string \| null }` |
+| `lss:group-status` | sheet → host | `{ connected: boolean }` |
 
-`dnd:group-status` is a *state* event (like `dnd:manifest`/`dnd:health`) — replayed to a
+`lss:group-status` is a *state* event (like `lss:manifest`/`dnd:health`) — replayed to a
 handler that subscribes late, via the same mechanism already built for those. The other
 two are one-off facts of a single setup flow, not persisted sheet state, so they are not
 replayed.
@@ -58,11 +63,11 @@ replayed.
    automatically the moment its real owner reconnects with the saved code. No special
    handling needed on the integrator's side.
 4. **Connecting a player.** Whenever you decide to (player joins your table, GM clicks
-   "invite", etc.), call `source.send({ type: 'dnd:group-code', payload: { code } })` on
+   "invite", etc.), call `source.send({ type: 'lss:group-code', payload: { code } })` on
    that player's existing Level 1 `createBridgeSheetSource` instance — the same one used
    for rolls/manifest/health. The sheet asks the player and creates the actual
    membership itself, through its own logged-in session — never silently.
-5. **Drawing your own "who's connected" list.** Subscribe to `dnd:group-status` on each
+5. **Drawing your own "who's connected" list.** Subscribe to `lss:group-status` on each
    player's source the same way you already subscribe to rolls. No party-list UI is
    provided by us — you already have one embed per seat, so you already have everything
    needed to build your own roster with a connected/not-connected indicator.
@@ -82,7 +87,7 @@ GM's groups from someone else's integration.
 
 - It does not create, join, or manage groups on your behalf — that's the two LSS-hosted
   pages plus your own persistence of `groupId`/`code`.
-- It does not render a member list or connection roster — build it from `dnd:group-status`.
+- It does not render a member list or connection roster — build it from `lss:group-status`.
 - It does not gate who *may* see a connected sheet — that's LSS's own access model
   (group owner always sees everything; other members follow the per-character visibility
   the GM set), unaffected by which VTT is embedding the sheet.
