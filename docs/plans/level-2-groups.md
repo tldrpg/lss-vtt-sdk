@@ -8,16 +8,23 @@ deliberately out of scope here: it already gets this via the Vortex bridge
 (`bridges/vortex`), so the mechanism below targets any *other* integration that wants
 shared rights without adopting Vortex.
 
-**Status of this doc:** shipped. The protocol (event types below, `lss:group-status`
-replay) is in npm from 0.7.0, the LSS-hosted pages it depends on (`iframe/group/`,
-`iframe/groups/`) and the sheet-side join popup are live in `storyview`, and the public
+**Status of this doc:** shipped. The protocol is in npm (groups from 0.7.0,
+`lss:group-leave` from 0.8.0), the LSS-hosted pages it depends on (`iframe/group/`,
+`iframe/groups/`) and the sheet-side invitation are live in `storyview`, and the public
 guide is at `/doc/developers/embedding/groups/`.
 
 **On the `lss:` prefix.** The prefix says whose vocabulary the payload speaks, not which
 frame carries it. A group is the same group whether it holds D&D sheets, Anima sheets or
-monsters, so all three events are platform-level `lss:` — `anima:group-code` would be a
+monsters, so every group event is platform-level `lss:` — `anima:group-code` would be a
 second dialect for one entity. 0.6.0 shipped `dnd:group-code`/`dnd:group-status` for half
 a day; they were renamed before any integrator existed, without a compatibility alias.
+
+**On the invitation being a screen of its own.** The sheet does not reuse its ordinary
+Vortex join modal with the code prefilled, which is how this shipped first: that screen is
+built around Mantine's `PinInput`, whose `onComplete` fires from a mount effect as soon as
+the value is already full length — so an offered code joined the group instantly, before
+the player could read whose group it was. The Vortex screen keeps that behaviour on
+purpose, so the invitation got its own screen instead.
 
 ## Why not OBR-style shared room metadata
 
@@ -26,20 +33,28 @@ The two existing Owlbear bridges (`bridges/dnd`, `bridges/vortex`) both use OBR'
 Owlbear-specific — a generic "any VTT" mechanism can't assume it exists. Level 2 instead
 reuses the one channel every Level 1 integrator already has: `postMessage` between an
 iframe and its host, via `createBridgeSheetSource`/`createSheetClient`. No new SDK
-primitive, just three new event types.
+primitive, just four new event types.
 
-## The three events
+## The four events
 
 | Type | Direction | Payload |
 |------|-----------|---------|
 | `lss:group-selected` | group-manager page → host | `{ groupId, code, name }` |
 | `lss:group-code` | host → player's sheet | `{ code: string \| null }` |
+| `lss:group-leave` | host → player's sheet | `{ code: string }` |
 | `lss:group-status` | sheet → host | `{ connected: boolean }` |
 
 `lss:group-status` is a *state* event (like `lss:manifest`/`dnd:health`) — replayed to a
-handler that subscribes late, via the same mechanism already built for those. The other
-two are one-off facts of a single setup flow, not persisted sheet state, so they are not
+handler that subscribes late, via the same mechanism already built for those. The others
+are one-off facts of a single setup flow, not persisted sheet state, so they are not
 replayed.
+
+**`{ code: null }` on `lss:group-code` is not a removal.** It withdraws a standing offer
+— the host lost track of its group — and never touches membership. Removal is
+`lss:group-leave`, and it carries a code precisely so a table can undo its own invitation
+and nothing else: a sheet ignores a leave for any group other than the one that host
+offered. It runs in the player's own session, so it only reaches a sheet that is currently
+embedded; removing a member who has closed the sheet stays the group owner's job.
 
 ## Integration flow
 
@@ -67,7 +82,11 @@ replayed.
    that player's existing Level 1 `createBridgeSheetSource` instance — the same one used
    for rolls/manifest/health. The sheet asks the player and creates the actual
    membership itself, through its own logged-in session — never silently.
-5. **Drawing your own "who's connected" list.** Subscribe to `lss:group-status` on each
+5. **Removing a player.** `source.send({ type: 'lss:group-leave', payload: { code } })`
+   on that player's source — the player left your table, or the GM removed them. No
+   confirmation is asked of the player: unlike joining, this only takes access away. The
+   sheet answers with `lss:group-status { connected: false }`.
+6. **Drawing your own "who's connected" list.** Subscribe to `lss:group-status` on each
    player's source the same way you already subscribe to rolls. No party-list UI is
    provided by us — you already have one embed per seat, so you already have everything
    needed to build your own roster with a connected/not-connected indicator.
@@ -88,6 +107,8 @@ GM's groups from someone else's integration.
 - It does not create, join, or manage groups on your behalf — that's the two LSS-hosted
   pages plus your own persistence of `groupId`/`code`.
 - It does not render a member list or connection roster — build it from `lss:group-status`.
+- It does not let a table remove a player whose sheet is not embedded right now, and it
+  never lets a table touch a group it did not offer.
 - It does not gate who *may* see a connected sheet — that's LSS's own access model
   (group owner always sees everything; other members follow the per-character visibility
   the GM set), unaffected by which VTT is embedding the sheet.
