@@ -158,6 +158,21 @@ export interface GroupStatusPayload {
 }
 
 /**
+ * @experimental
+ * The table removing a player from its group — the counterpart of `lss:group-code`, and
+ * the reason it carries a code rather than being a bare "leave": the sheet honors it only
+ * for a group *this* host offered, so a table can undo its own invitation and nothing
+ * else. Leaving is not `{ code: null }`, which merely withdraws a standing offer and
+ * never touches membership.
+ *
+ * Executed by the player's own session, so it only reaches a sheet that is currently
+ * embedded. Removing a member who has closed the sheet stays the group owner's job.
+ */
+export interface GroupLeavePayload {
+    code: string;
+}
+
+/**
  * Everything that crosses the sheet↔VTT boundary.
  *
  * The prefix says **whose vocabulary the payload speaks**, not which frame carries it:
@@ -179,6 +194,7 @@ export interface GroupStatusPayload {
  * | `dnd:health`        | experimental | sheet → host |
  * | `lss:group-selected`| experimental | group-manager page → host |
  * | `lss:group-code`    | experimental | host → sheet |
+ * | `lss:group-leave`   | experimental | host → sheet |
  * | `lss:group-status`  | experimental | sheet → host |
  */
 export type SheetEvent =
@@ -204,6 +220,8 @@ export type SheetEvent =
     | { type: 'lss:group-selected'; payload: GroupSelectedPayload }
     /** @experimental */
     | { type: 'lss:group-code'; payload: GroupCodePayload }
+    /** @experimental */
+    | { type: 'lss:group-leave'; payload: GroupLeavePayload }
     /** @experimental */
     | { type: 'lss:group-status'; payload: GroupStatusPayload };
 

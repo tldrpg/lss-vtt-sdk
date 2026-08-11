@@ -93,6 +93,7 @@ To install in OBR: Extensions → Add extension → paste the manifest URL above
 | `dnd:health` | 🧪 reserved | sheet → host | HP after an adjust/set |
 | `lss:group-selected` | 🧪 reserved | group-manager page → host | A group was created/picked — persist `groupId`/`code` |
 | `lss:group-code` | 🧪 reserved | host → sheet | Offer a group to a specific player's sheet |
+| `lss:group-leave` | 🧪 reserved | host → sheet | Remove that player from the group the host offered |
 | `lss:group-status` | 🧪 reserved | sheet → host | Is this character currently a member of that group |
 
 Reserved events are typed and wired end-to-end, but the bridge-side API is experimental. Subscribe via `source.onEvent` directly.
@@ -102,8 +103,8 @@ shared by every sheet product we ship, and `dnd:` is reserved for payloads that 
 sense for the D&D 5e sheet — such as `dnd:health`, which carries 5e's own temp-HP model.
 The system-agnostic route to the same numbers is `lss:manifest` + `lss:command`.
 
-The `lss:group-selected`/`lss:group-code`/`lss:group-status` trio is "Level 2" — shared
-rights between players at a table, without adopting the Vortex room hub. See
+The `lss:group-*` events are "Level 2" — shared rights between players at a table,
+without adopting the Vortex room hub. See
 [docs/plans/level-2-groups.md](docs/plans/level-2-groups.md) for the full flow and why
 there is no shared-metadata dependency like the Owlbear bridges use.
 
