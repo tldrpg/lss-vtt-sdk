@@ -68,21 +68,6 @@ describe('createBridgeSheetSource', () => {
         expect(handler).toHaveBeenCalledWith(roll.payload);
     });
 
-    it('drops the legacy dnd:roll copy, so a roll is delivered once', () => {
-        const h = makeHarness();
-        const onRoll = vi.fn();
-        const onEvent = vi.fn();
-        const source = createBridgeSheetSource({ iframe: h.iframe, host: h.host });
-        source.onRoll(onRoll);
-        source.onEvent(onEvent);
-
-        h.deliver({ __lssSheetSdk: 2, event: roll });
-        h.deliver({ __lssSheetSdk: 2, event: { type: 'dnd:roll', payload: roll.payload } });
-
-        expect(onRoll).toHaveBeenCalledTimes(1);
-        expect(onEvent).toHaveBeenCalledTimes(1);
-    });
-
     it('ignores messages from a window other than the sheet iframe', () => {
         const h = makeHarness();
         const handler = vi.fn();

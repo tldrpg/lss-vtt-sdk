@@ -188,7 +188,6 @@ export interface GroupLeavePayload {
  * | Type | Status | Direction |
  * |------|--------|-----------|
  * | `lss:roll`          | stable       | sheet → host |
- * | `dnd:roll`          | deprecated   | sheet → host |
  * | `lss:manifest`      | experimental | sheet → host |
  * | `lss:command`       | experimental | host → sheet |
  * | `dnd:health`        | experimental | sheet → host |
@@ -199,12 +198,6 @@ export interface GroupLeavePayload {
  */
 export type SheetEvent =
     | { type: 'lss:roll'; payload: DiceRollPayload }
-    /**
-     * @deprecated Legacy name for `lss:roll`, kept only so bridges built against
-     * ≤0.6.0 keep receiving rolls. The sheet emits both; this SDK delivers only
-     * `lss:roll` to handlers. Dropped once our own bridges are redeployed.
-     */
-    | { type: 'dnd:roll'; payload: DiceRollPayload }
     /** @experimental */
     | { type: 'lss:manifest'; payload: CapabilityManifest }
     /** @experimental */

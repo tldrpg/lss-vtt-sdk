@@ -32,15 +32,6 @@ export interface BridgeSheetSourceOptions {
  */
 const STATE_EVENT_TYPES: ReadonlySet<SheetEvent['type']> = new Set(['lss:manifest', 'dnd:health', 'lss:group-status']);
 
-/**
- * `dnd:roll` is the legacy name of `lss:roll`, and the sheet puts both on the wire so
- * that bridges built against ≤0.6.0 keep working. A host on this version must never see
- * the pair — one roll, one event — so the legacy copy is dropped on arrival rather than
- * forwarded. Goes away together with the sheet-side duplicate, once our own bridges are
- * redeployed on 0.7.0.
- */
-const LEGACY_ALIASED_TYPES: ReadonlySet<string> = new Set(['dnd:roll']);
-
 /** Bridge-side source: `onRoll` convenience + full `onEvent` access + inbound `send`. */
 export interface BridgeSheetSource extends SheetSource {
     /**
@@ -90,9 +81,6 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
         }
         const sheetEvent = readEnvelope(event.data);
         if (!sheetEvent) {
-            return;
-        }
-        if (LEGACY_ALIASED_TYPES.has(sheetEvent.type)) {
             return;
         }
         if (STATE_EVENT_TYPES.has(sheetEvent.type)) {

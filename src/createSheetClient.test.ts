@@ -41,38 +41,15 @@ function makeHarness() {
 }
 
 describe('createSheetClient', () => {
-    it('send() posts a marked envelope to the target', () => {
+    it('send() posts a marked envelope to the target, once', () => {
         const h = makeHarness();
         createSheetClient({ host: h.host, target: h.target }).send(roll);
 
+        expect(h.target.postMessage).toHaveBeenCalledTimes(1);
         expect(h.target.postMessage).toHaveBeenCalledWith(
             expect.objectContaining({ __lssSheetSdk: 2, event: roll }),
             '*',
         );
-    });
-
-    it('send() mirrors a roll under the legacy dnd:roll name for pre-0.7.0 bridges', () => {
-        const h = makeHarness();
-        createSheetClient({ host: h.host, target: h.target }).send(roll);
-
-        expect(h.target.postMessage).toHaveBeenCalledTimes(2);
-        expect(h.target.postMessage).toHaveBeenLastCalledWith(
-            expect.objectContaining({
-                __lssSheetSdk: 2,
-                event: { type: 'dnd:roll', payload: roll.payload },
-            }),
-            '*',
-        );
-    });
-
-    it('send() mirrors nothing but rolls', () => {
-        const h = makeHarness();
-        createSheetClient({ host: h.host, target: h.target }).send({
-            type: 'lss:group-status',
-            payload: { connected: true },
-        });
-
-        expect(h.target.postMessage).toHaveBeenCalledTimes(1);
     });
 
     it('send() honors a provided targetOrigin', () => {

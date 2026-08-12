@@ -42,12 +42,12 @@ void adapter.ready().then((ok) => {
     // When the sheet posts a roll: local toast for the roller, broadcast to peers.
     source.onRoll((roll) => {
         if (notifyRolls) adapter.notify(formatRollMessage(roll), rollVariant(roll));
-        adapter.broadcast({ type: 'dnd:roll', payload: roll });
+        adapter.broadcast({ type: 'lss:roll', payload: roll });
     });
 
     // Relay rolls broadcast by other players as local toasts.
     source.onEvent((event) => {
-        if (event.type === 'dnd:roll' && notifyRolls) {
+        if (event.type === 'lss:roll' && notifyRolls) {
             adapter.notify(formatRollMessage(event.payload), rollVariant(event.payload));
         }
     });

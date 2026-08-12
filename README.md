@@ -87,7 +87,6 @@ To install in OBR: Extensions → Add extension → paste the manifest URL above
 | Type | Status | Direction | Description |
 |------|--------|-----------|-------------|
 | `lss:roll` | ✅ stable | sheet → host | A roll result |
-| `dnd:roll` | ⚠️ deprecated | sheet → host | Legacy name of `lss:roll` — still on the wire for bridges built against ≤0.6.0, never delivered to handlers on 0.7.0+ |
 | `lss:manifest` | 🧪 reserved | sheet → host | Sheet capabilities at handshake |
 | `lss:command` | 🧪 reserved | host → sheet | Inbound ops (adjust HP, toggle condition, …) |
 | `dnd:health` | 🧪 reserved | sheet → host | HP after an adjust/set |

@@ -25,14 +25,14 @@ source.onRoll((roll) => {
 
     // TODO: wire to your VTT's notification and peer-broadcast APIs
     // e.g. myVTT.notification.show(message, variant);
-    //      myVTT.room.broadcast(JSON.stringify({ type: 'dnd:roll', payload: roll }));
+    //      myVTT.room.broadcast(JSON.stringify({ type: 'lss:roll', payload: roll }));
     console.log('[Roll]', message, variant);
 });
 
 // TODO: relay broadcasts from other clients back as local notifications
 // e.g. myVTT.room.onBroadcast((raw) => {
 //     const event = JSON.parse(raw);
-//     if (event.type === 'dnd:roll') {
+//     if (event.type === 'lss:roll') {
 //         myVTT.notification.show(
 //             formatRollMessage(event.payload),
 //             rollVariant(event.payload),
