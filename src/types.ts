@@ -136,6 +136,17 @@ export interface GroupSelectedPayload {
     name: string;
 }
 
+/** @experimental Request the roster for a selected group from its manager frame. */
+export interface GroupMembersRequestPayload {
+    groupId: string;
+}
+
+/** @experimental The character roster from an authenticated group manager frame. */
+export interface GroupMembersPayload {
+    groupId: string;
+    members: { characterId: string; name: string }[];
+}
+
 /**
  * @experimental
  * Pushed into a specific player's embedded sheet to offer joining a group — the sheet
@@ -192,6 +203,8 @@ export interface GroupLeavePayload {
  * | `lss:command`       | experimental | host → sheet |
  * | `dnd:health`        | experimental | sheet → host |
  * | `lss:group-selected`| experimental | group-manager page → host |
+ * | `lss:group-members-request` | experimental | host → group-manager page |
+ * | `lss:group-members` | experimental | group-manager page → host |
  * | `lss:group-code`    | experimental | host → sheet |
  * | `lss:group-leave`   | experimental | host → sheet |
  * | `lss:group-status`  | experimental | sheet → host |
@@ -211,6 +224,10 @@ export type SheetEvent =
     | { type: 'dnd:health'; payload: HealthChangedPayload }
     /** @experimental */
     | { type: 'lss:group-selected'; payload: GroupSelectedPayload }
+    /** @experimental */
+    | { type: 'lss:group-members-request'; payload: GroupMembersRequestPayload }
+    /** @experimental */
+    | { type: 'lss:group-members'; payload: GroupMembersPayload }
     /** @experimental */
     | { type: 'lss:group-code'; payload: GroupCodePayload }
     /** @experimental */

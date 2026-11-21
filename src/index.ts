@@ -4,16 +4,26 @@
 export * from './types';
 export { SHEET_IFRAME_SANDBOX } from './constants';
 export { createSheetClient } from './createSheetClient';
+export { wrapEnvelope as packSheetEvent } from './postMessageProtocol';
 export { createBridgeSheetSource } from './createBridgeSheetSource';
-export type { BridgeSheetSource, BridgeSheetSourceOptions, SheetFrameRef } from './createBridgeSheetSource';
+export type {
+    BridgeSheetSource, BridgeSheetSourceOptions, CharacterBridgeSheetSourceOptions, RoomCharacterBridgeSheetSourceOptions, SheetFrameRef,
+} from './createBridgeSheetSource';
 export { formatRollMessage, rollVariant } from './formatRoll';
 export type { NotifyVariant } from './formatRoll';
 export type {
-    CharacterAction, CharacterAddress, CharacterSnapshot, CharacterCommand,
+    CharacterAction, CharacterActionPayload, CharacterAttack, CharacterSpell, CharacterCatalog, CharacterSkill, CharacterResource,
+    CharacterAddress, CharacterSnapshot, CharacterCommand,
     CharacterWireCommand, CharacterResult, CharacterMessage,
+    CharacterRollAction, CharacterRollActionPayload, CharacterRollIntent, CharacterRollResult, CharacterSaveAbility,
 } from './characterProtocol';
-export { CHARACTER_API_VERSION, isCharacterCommand, packCharacterMessage, parseCharacterMessage } from './characterProtocol';
+export {
+    CHARACTER_API_VERSION, isCharacterCommand, isCharacterRollActionType, packCharacterMessage, parseCharacterMessage,
+} from './characterProtocol';
 export type {
     CharacterConnectionStatus, CharacterSheetConnection, CharacterSheetFrame, CharacterSheetOptions,
 } from './connectCharacterSheet';
 export { connectCharacterSheet } from './connectCharacterSheet';
+export type { RoomCharacterCommand, RoomCharacterMessage, RoomCharacterResult } from './roomCharacterProtocol';
+export { packRoomCharacterMessage, parseRoomCharacterMessage } from './roomCharacterProtocol';
+export type { RoomCharacterConnection } from './roomCharacterConnection';

@@ -37,7 +37,7 @@ export function createSheetClient(options: SheetClientOptions = {}): SheetClient
             return;
         }
         const sheetEvent = readEnvelope(event.data);
-        if (!sheetEvent) {
+        if (!sheetEvent || (typeof sheetEvent.type === 'string' && sheetEvent.type.startsWith('lss:room-character-'))) {
             return;
         }
         handlers.forEach((handler) => handler(sheetEvent, event));

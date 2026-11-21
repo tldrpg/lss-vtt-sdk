@@ -7,12 +7,12 @@ import type { MessageHost } from './types';
 const origin = 'https://sheet.example';
 const snapshot: CharacterSnapshot = {
     characterId: 'character', executionId: 'sheet-execution', revision: 4, savedThrough: 4,
-    hp: { current: 10, max: 20, temp: 4 }, actions: ['health.damage'],
+    hp: { current: 10, max: 20, temp: 4 }, actions: ['health.damage', 'spell.spend-charge'],
 };
-const command: CharacterCommand = {
+const command = {
     characterId: snapshot.characterId, executionId: snapshot.executionId, requestId: 'request-1',
     expectedRevision: 4, action: { type: 'health.damage', amount: 8 },
-};
+} satisfies CharacterCommand;
 
 function setup() {
     let listener: ((event: MessageEvent) => void) | undefined;
@@ -40,8 +40,8 @@ function setup() {
         return message.payload.helloId;
     }
 
-    function ready(helloId: string, connectionId = 'connection'): CharacterMessage {
-        return { type: 'lss:character-ready', payload: { status: 'ready', version: 1, helloId, connectionId, snapshot } };
+    function ready(helloId: string, connectionId = 'connection', state = snapshot): CharacterMessage {
+        return { type: 'lss:character-ready', payload: { status: 'ready', version: 1, helloId, connectionId, snapshot: state } };
     }
 
     return { connection, peer, hello, ready, deliver, load: () => load?.() };
@@ -143,6 +143,99 @@ describe('connecting the character sheet', () => {
         t.deliver(t.ready(newHello, 'replacement'));
         expect(t.connection.getSnapshot()).toEqual(snapshot);
         expect(t.peer.postMessage.mock.calls.filter(([{ event }]) => event.type === 'lss:character-command')).toHaveLength(1);
+        t.connection.dispose();
+    });
+
+    it('coalesces only retries for the same spell entry and keeps that entry on the wire', async () => {
+        const t = setup();
+        t.deliver(t.ready(t.hello()));
+        const spend = {
+            ...command, action: { type: 'spell.spend-charge', spellId: 'first-spell' },
+        } satisfies CharacterCommand;
+        const pending = t.connection.send(spend);
+        expect(t.connection.send(spend)).toBe(pending);
+        await expect(t.connection.send({ ...spend, action: { ...spend.action, spellId: 'second-spell' } }))
+            .resolves.toMatchObject({ phase: 'rejected', code: 'request_id_reused' });
+        const sent = t.peer.postMessage.mock.calls.map(([{ event }]) => event)
+            .filter(event => event.type === 'lss:character-command');
+        expect(sent.map(event => event.payload.command)).toEqual([spend]);
+        t.connection.dispose();
+    });
+
+    it('sends an offered roll once for concurrent identical requests and completes it on rolled', async () => {
+        const t = setup();
+        const roll = {
+            ...command, action: { type: 'weapon.roll-attack', weaponId: 'rapier', intent: 'disadvantage' },
+        } satisfies CharacterCommand;
+        t.deliver(t.ready(t.hello(), 'connection', { ...snapshot, rollActions: ['weapon.roll-attack'] }));
+        expect(t.connection.getSnapshot()?.rollActions).toEqual(['weapon.roll-attack']);
+        expect(Object.isFrozen(t.connection.getSnapshot()?.rollActions)).toBe(true);
+        const pending = t.connection.send(roll);
+        expect(t.connection.send(roll)).toBe(pending);
+        await expect(t.connection.send({ ...roll, action: { ...roll.action, intent: 'advantage' } }))
+            .resolves.toMatchObject({ phase: 'rejected', code: 'request_id_reused' });
+        expect(t.peer.postMessage.mock.calls.map(([{ event }]) => event)
+            .filter(event => event.type === 'lss:character-command').map(event => event.payload.command)).toEqual([roll]);
+
+        const result = {
+            characterId: roll.characterId, executionId: roll.executionId, requestId: roll.requestId,
+            phase: 'rolled', roll: { total: 8, formula: '1d20+5', intent: 'disadvantage', natural: 3 },
+        } as const;
+        t.deliver({ type: 'lss:character-result', payload: { version: 1, connectionId: 'connection', result } });
+        await expect(pending).resolves.toEqual(result);
+        t.connection.dispose();
+    });
+
+    it('coalesces a skill check only for the same skill and mode', async () => {
+        const t = setup();
+        t.deliver(t.ready(t.hello(), 'connection', { ...snapshot, rollActions: ['skill-check.roll'] }));
+        const roll = {
+            ...command, action: { type: 'skill-check.roll', skillId: 'arcana', intent: 'advantage' },
+        } satisfies CharacterCommand;
+        const pending = t.connection.send(roll);
+        expect(t.connection.send(roll)).toBe(pending);
+        await expect(t.connection.send({ ...roll, action: { ...roll.action, skillId: 'history' } }))
+            .resolves.toMatchObject({ phase: 'rejected', code: 'request_id_reused' });
+        expect(t.peer.postMessage.mock.calls.map(([{ event }]) => event)
+            .filter(event => event.type === 'lss:character-command').map(event => event.payload.command)).toEqual([roll]);
+        t.connection.dispose();
+    });
+
+    it('sends adjustments only for editable counters and distinguishes changed deltas', async () => {
+        const t = setup();
+        t.deliver(t.ready(t.hello(), 'connection', {
+            ...snapshot,
+            resources: [
+                { id: 'arrows', name: 'Arrows', current: 3, max: 5, canAdjust: true },
+                { id: 'tokens', name: 'Tokens', current: 1, max: null, canAdjust: false },
+            ],
+        }));
+        const resources = t.connection.getSnapshot()?.resources;
+        expect(Object.isFrozen(resources)).toBe(true);
+        expect(Object.isFrozen(resources?.[0])).toBe(true);
+
+        const adjust = {
+            ...command, action: { type: 'resource.adjust', resourceId: 'arrows', delta: -1 },
+        } satisfies CharacterCommand;
+        await expect(t.connection.send({ ...adjust, action: { ...adjust.action, resourceId: 'tokens' } }))
+            .resolves.toMatchObject({ phase: 'rejected', code: 'forbidden' });
+        await expect(t.connection.send({ ...adjust, action: { ...adjust.action, resourceId: 'unknown' } }))
+            .resolves.toMatchObject({ phase: 'rejected', code: 'forbidden' });
+        const pending = t.connection.send(adjust);
+        expect(t.connection.send(adjust)).toBe(pending);
+        await expect(t.connection.send({ ...adjust, action: { ...adjust.action, delta: 1 } }))
+            .resolves.toMatchObject({ phase: 'rejected', code: 'request_id_reused' });
+        expect(t.peer.postMessage.mock.calls.map(([{ event }]) => event)
+            .filter(event => event.type === 'lss:character-command').map(event => event.payload.command)).toEqual([adjust]);
+        t.connection.dispose();
+    });
+
+    it('keeps a roll off the wire when an older sheet does not offer it', async () => {
+        const t = setup();
+        t.deliver(t.ready(t.hello()));
+        await expect(t.connection.send({ ...command, action: { type: 'saving-throw.roll', ability: 'dex' } }))
+            .resolves.toMatchObject({ phase: 'rejected', code: 'forbidden' });
+        expect(t.peer.postMessage.mock.calls.some(([{ event }]) => event.type === 'lss:character-command')).toBe(false);
         t.connection.dispose();
     });
 

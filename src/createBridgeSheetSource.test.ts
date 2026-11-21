@@ -3,7 +3,6 @@ import {
 } from 'vitest';
 
 import { createBridgeSheetSource } from './createBridgeSheetSource';
-import type { SheetFrameRef } from './createBridgeSheetSource';
 import type { MessageHost, SheetEvent } from './types';
 
 const roll: SheetEvent = {
@@ -44,7 +43,13 @@ function makeHarness() {
         removeEventListener: vi.fn(() => { listener = undefined; }),
     };
     const contentWindow = { postMessage: vi.fn() };
-    const iframe: SheetFrameRef = { contentWindow: contentWindow as unknown as Window };
+    const addLoadListener = vi.fn();
+    const removeLoadListener = vi.fn();
+    const iframe = {
+        contentWindow: contentWindow as unknown as Window | null,
+        addEventListener(type: 'load', handler: () => void) { addLoadListener(type, handler); },
+        removeEventListener(type: 'load', handler: () => void) { removeLoadListener(type, handler); },
+    };
 
     const deliver = (data: unknown, opts: { source?: unknown; origin?: string } = {}): void => {
         listener?.({
@@ -54,7 +59,7 @@ function makeHarness() {
         } as MessageEvent);
     };
 
-    return { host, iframe, contentWindow, deliver };
+    return { host, iframe, contentWindow, deliver, addLoadListener, removeLoadListener };
 }
 
 describe('createBridgeSheetSource', () => {
@@ -211,5 +216,154 @@ describe('createBridgeSheetSource', () => {
 
         expect(handler).not.toHaveBeenCalled();
         expect(h.host.removeEventListener).toHaveBeenCalled();
+    });
+
+    it('keeps Character messages out of legacy handlers even when Character API is disabled', () => {
+        const h = makeHarness();
+        const source = createBridgeSheetSource({ iframe: h.iframe, host: h.host });
+        const handler = vi.fn();
+        source.onEvent(handler);
+        h.deliver({ __lssSheetSdk: 2, event: { type: 'lss:character-ready' } });
+        h.deliver({ __lssSheetSdk: 2, event: groupStatus });
+
+        expect(handler.mock.calls).toEqual([[groupStatus]]);
+        expect(h.addLoadListener).not.toHaveBeenCalled();
+        source.dispose();
+    });
+
+    it('routes opt-in Character traffic separately through the same listener and disposes it with the source', () => {
+        vi.useFakeTimers();
+        try {
+            const h = makeHarness();
+            const source = createBridgeSheetSource({
+                iframe: h.iframe, host: h.host, characterApi: { sheetOrigin: 'https://sheet.example' },
+            });
+            const handler = vi.fn();
+            source.onEvent(handler);
+            vi.advanceTimersByTime(1);
+            const hello = h.contentWindow.postMessage.mock.lastCall?.[0].event;
+            expect(hello?.type).toBe('lss:character-hello');
+
+            const snapshot = {
+                characterId: 'c1', executionId: 'execution', revision: 3, savedThrough: 3,
+                hp: { current: 7, max: 12, temp: 0 }, actions: ['health.damage'],
+            };
+            const ready = { __lssSheetSdk: 2, event: {
+                type: 'lss:character-ready',
+                payload: { version: 1, status: 'ready', helloId: hello.payload.helloId, connectionId: 'connection', snapshot },
+            } };
+            h.deliver(ready, { origin: 'https://other.example' });
+            expect(source.character.getSnapshot()).toBeUndefined();
+            h.deliver(ready);
+            expect(source.character.getSnapshot()).toEqual(snapshot);
+            h.deliver({ __lssSheetSdk: 2, event: health });
+            expect(handler.mock.calls).toEqual([[health]]);
+            expect(h.host.addEventListener).toHaveBeenCalledTimes(1);
+
+            source.dispose();
+            expect(source.character.getSnapshot()).toBeUndefined();
+            expect(h.removeLoadListener).toHaveBeenCalledTimes(1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});
+
+describe('room character commands', () => {
+    const command = {
+        version: 1,
+        roomId: 'room-1',
+        characterId: 'c1',
+        requestId: 'damage-1',
+        action: { type: 'health.damage', amount: 7 },
+    } as const;
+    const saved = {
+        characterId: command.characterId,
+        requestId: command.requestId,
+        phase: 'saved',
+        revision: 4,
+        serverVersion: '2026-11-21T12:15:12.345Z',
+    } as const;
+    const reply = (result: object, roomId = command.roomId as string) => ({
+        __lssSheetSdk: 2,
+        event: { type: 'lss:room-character-result', payload: { version: 1, roomId, result } },
+    });
+    function makeRoomSource() {
+        const h = makeHarness();
+        const source = createBridgeSheetSource({
+            iframe: h.iframe, host: h.host, roomCharacters: { sheetOrigin: 'https://sheet.example' },
+        });
+        return { ...h, source };
+    }
+
+    it('accepts a saved receipt only from the selected iframe and exact origin with matching room, character, and ID', async () => {
+        const h = makeRoomSource();
+        const results = vi.fn();
+        const legacy = vi.fn();
+        h.source.roomCharacters.onResult(results);
+        h.source.onEvent(legacy);
+        try {
+            const pending = h.source.roomCharacters.send(command);
+            expect(h.contentWindow.postMessage).toHaveBeenCalledWith({
+                __lssSheetSdk: 2, event: { type: 'lss:room-character-command', payload: command },
+            }, 'https://sheet.example');
+            h.deliver(reply(saved), { origin: 'https://wrong.example' });
+            h.deliver(reply(saved), { source: { postMessage: vi.fn() } });
+            h.deliver(reply(saved, 'room-2'));
+            h.deliver(reply({ ...saved, characterId: 'c2' }));
+            h.deliver(reply({ ...saved, requestId: 'damage-2' }));
+            h.deliver(reply({ ...saved, serverVersion: undefined }));
+            expect(results).not.toHaveBeenCalled();
+
+            const applied = { requestId: command.requestId, characterId: command.characterId, phase: 'applied', revision: 4 };
+            h.deliver(reply(applied));
+            expect(results).toHaveBeenCalledWith(applied, command.roomId);
+            h.deliver(reply(saved));
+            await expect(pending).resolves.toEqual(saved);
+            expect(results).toHaveBeenLastCalledWith(saved, command.roomId);
+            expect(legacy).not.toHaveBeenCalled();
+
+            h.deliver({ __lssSheetSdk: 2, event: groupStatus });
+            expect(legacy).toHaveBeenCalledWith(groupStatus);
+        } finally {
+            h.source.dispose();
+        }
+    });
+
+    it('coalesces a matching pending command and rejects reuse with a different amount', async () => {
+        const h = makeRoomSource();
+        try {
+            const pending = h.source.roomCharacters.send(command);
+            expect(h.source.roomCharacters.send({ ...command })).toBe(pending);
+            await expect(h.source.roomCharacters.send({
+                ...command, action: { type: 'health.damage', amount: 9 },
+            })).resolves.toMatchObject({ phase: 'rejected', code: 'request_id_reused' });
+            expect(h.contentWindow.postMessage).toHaveBeenCalledTimes(1);
+            h.deliver(reply(saved));
+            await expect(pending).resolves.toEqual(saved);
+        } finally {
+            h.source.dispose();
+        }
+    });
+
+    it('reports an unknown outcome on timeout or iframe reload without resending the command', async () => {
+        vi.useFakeTimers();
+        const h = makeRoomSource();
+        try {
+            const pending = h.source.roomCharacters.send(command);
+            vi.advanceTimersByTime(50_000);
+            await expect(pending).resolves.toMatchObject({ phase: 'unknown', code: 'timeout' });
+            expect(h.contentWindow.postMessage).toHaveBeenCalledTimes(1);
+
+            const retry = h.source.roomCharacters.send(command);
+            const loadHandler = h.addLoadListener.mock.calls[0]?.[1];
+            expect(loadHandler).toBeTypeOf('function');
+            loadHandler();
+            await expect(retry).resolves.toMatchObject({ phase: 'unknown', code: 'disconnected' });
+            expect(h.contentWindow.postMessage).toHaveBeenCalledTimes(2);
+        } finally {
+            h.source.dispose();
+            vi.useRealTimers();
+        }
     });
 });

@@ -1,10 +1,11 @@
 import {
-    CHARACTER_API_VERSION, isCharacterCommand, packCharacterMessage, parseCharacterMessage,
+    CHARACTER_API_VERSION, readCharacterCommand, packCharacterMessage, parseCharacterMessage,
 } from './characterProtocol';
 import type {
-    CharacterAddress, CharacterCommand, CharacterMessage, CharacterResult, CharacterSnapshot,
+    CharacterActionPayload, CharacterAddress, CharacterCommand, CharacterMessage, CharacterResult, CharacterSnapshot,
 } from './characterProtocol';
 import type { MessageHost } from './types';
+import { requireSheetOrigin } from './postMessageProtocol';
 
 export type CharacterConnectionStatus = 'connecting' | 'waiting' | 'denied' | 'unsupported' | 'ready' | 'disconnected';
 
@@ -53,6 +54,50 @@ function sameAddress(first: CharacterAddress, second: CharacterAddress): boolean
     return first.characterId === second.characterId && first.executionId === second.executionId;
 }
 
+function sameAction(first: CharacterActionPayload, second: CharacterActionPayload): boolean {
+    switch (first.type) {
+        case 'health.damage':
+        case 'health.heal':
+            return second.type === first.type && first.amount === second.amount;
+        case 'spell.spend-charge':
+            return second.type === first.type && first.spellId === second.spellId;
+        case 'resource.adjust':
+            return second.type === first.type && first.resourceId === second.resourceId && first.delta === second.delta;
+        case 'weapon.roll-attack':
+            return second.type === first.type && first.weaponId === second.weaponId && first.intent === second.intent;
+        case 'weapon.roll-damage':
+            return second.type === first.type && first.weaponId === second.weaponId && first.critical === second.critical;
+        case 'saving-throw.roll':
+        case 'ability-check.roll':
+            return second.type === first.type && first.ability === second.ability && first.intent === second.intent;
+        case 'skill-check.roll':
+            return second.type === first.type && first.skillId === second.skillId && first.intent === second.intent;
+        case 'initiative.roll':
+            return second.type === first.type && first.intent === second.intent;
+    }
+}
+
+function freezeSnapshot(next: CharacterSnapshot) {
+    Object.freeze(next.hp);
+    Object.freeze(next.actions);
+    Object.freeze(next.rollActions);
+    next.resources?.forEach(resource => Object.freeze(resource));
+    Object.freeze(next.resources);
+    if (next.catalog) {
+        next.catalog.attacks.forEach(attack => Object.freeze(attack));
+        next.catalog.spells?.forEach((spell) => {
+            Object.freeze(spell.charge);
+            Object.freeze(spell);
+        });
+        Object.freeze(next.catalog.attacks);
+        Object.freeze(next.catalog.spells);
+        next.catalog.skills?.forEach(skill => Object.freeze(skill));
+        Object.freeze(next.catalog.skills);
+        Object.freeze(next.catalog);
+    }
+    Object.freeze(next);
+}
+
 function unknown(command: CharacterCommand, code: 'timeout' | 'disconnected'): CharacterResult {
     return {
         characterId: command.characterId, executionId: command.executionId, requestId: command.requestId,
@@ -61,11 +106,13 @@ function unknown(command: CharacterCommand, code: 'timeout' | 'disconnected'): C
 }
 
 export function connectCharacterSheet(options: CharacterSheetOptions): CharacterSheetConnection {
+    return createCharacterSheetConnection(options, true).connection;
+}
+
+/** The bridge source dispatches its own messages, while standalone callers need a listener. */
+export function createCharacterSheetConnection(options: CharacterSheetOptions, listenToHost: boolean) {
     const { iframe, sheetOrigin } = options;
-    const origin = new URL(sheetOrigin);
-    if (origin.origin !== sheetOrigin || (origin.protocol !== 'https:' && origin.protocol !== 'http:')) {
-        throw new TypeError('sheetOrigin must be an exact HTTP(S) origin');
-    }
+    requireSheetOrigin(sheetOrigin);
     const host: MessageHost | undefined = options.host ?? (typeof window === 'undefined' ? undefined : window);
     const stateListeners = new Set<(snapshot: CharacterSnapshot | undefined) => void>();
     const statusListeners = new Set<(status: CharacterConnectionStatus) => void>();
@@ -86,11 +133,7 @@ export function connectCharacterSheet(options: CharacterSheetOptions): Character
 
     function publishSnapshot(next: CharacterSnapshot | undefined) {
         if (snapshot === next) return;
-        if (next) {
-            Object.freeze(next.hp);
-            Object.freeze(next.actions);
-            Object.freeze(next);
-        }
+        if (next) freezeSnapshot(next);
         snapshot = next;
         stateListeners.forEach(listener => listener(next));
     }
@@ -195,14 +238,14 @@ export function connectCharacterSheet(options: CharacterSheetOptions): Character
         }
     }
 
-    host?.addEventListener('message', receive);
+    if (listenToHost) host?.addEventListener('message', receive);
     iframe.addEventListener('load', beginHandshake);
     if (host) {
         // A caller may attach the listener before assigning src and inserting the iframe.
         helloTimer = setTimeout(beginHandshake, 0);
     }
 
-    return {
+    const connection: CharacterSheetConnection = {
         getSnapshot() {
             if (connected && framePeer() !== connected.peer) disconnect();
             return snapshot;
@@ -228,25 +271,26 @@ export function connectCharacterSheet(options: CharacterSheetOptions): Character
                 resultListeners.forEach(listener => listener(result));
                 return Promise.resolve(result);
             };
-            if (!isCharacterCommand(command)) return reject('invalid_parameters');
+            const sent = readCharacterCommand(command);
+            if (!sent) return reject('invalid_parameters');
             const peer = framePeer();
             if (connected && peer !== connected.peer) disconnect();
             if (disposed || !connected || !snapshot || !peer) return reject('not_ready');
             if (!sameAddress(snapshot, command)) return reject('stale_session');
-            if (!snapshot.actions.includes(command.action.type)) return reject('forbidden');
+            const action = sent.action;
+            const offered = action.type === 'resource.adjust'
+                ? snapshot.resources?.some(resource => resource.id === action.resourceId && resource.canAdjust)
+                : snapshot.actions.some(type => type === action.type) || snapshot.rollActions?.some(type => type === action.type);
+            if (!offered) return reject('forbidden');
 
             const existing = pending.get(requestId);
             if (existing) {
                 const previous = existing.command;
-                return previous.expectedRevision === command.expectedRevision
-                    && previous.action.type === command.action.type && previous.action.amount === command.action.amount
+                return previous.expectedRevision === sent.expectedRevision
+                    && sameAction(previous.action, sent.action)
                     ? existing.promise : reject('request_id_reused');
             }
 
-            const sent: CharacterCommand = {
-                characterId, executionId, requestId, expectedRevision: command.expectedRevision,
-                action: { type: command.action.type, amount: command.action.amount },
-            };
             let resolve!: (result: CharacterResult) => void;
             const promise = new Promise<CharacterResult>(complete => { resolve = complete; });
             const timer = setTimeout(() => {
@@ -267,7 +311,7 @@ export function connectCharacterSheet(options: CharacterSheetOptions): Character
         dispose() {
             if (disposed) return;
             disposed = true;
-            host?.removeEventListener('message', receive);
+            if (listenToHost) host?.removeEventListener('message', receive);
             iframe.removeEventListener('load', beginHandshake);
             disconnect();
             stateListeners.clear();
@@ -275,4 +319,5 @@ export function connectCharacterSheet(options: CharacterSheetOptions): Character
             resultListeners.clear();
         },
     };
+    return { connection, receive };
 }

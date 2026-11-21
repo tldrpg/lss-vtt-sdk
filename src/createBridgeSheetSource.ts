@@ -1,3 +1,7 @@
+import { createCharacterSheetConnection } from './connectCharacterSheet';
+import type { CharacterSheetConnection, CharacterSheetFrame } from './connectCharacterSheet';
+import { createRoomCharacterConnection } from './roomCharacterConnection';
+import type { RoomCharacterConnection } from './roomCharacterConnection';
 import type {
     DiceRollPayload, MessageHost, SheetEvent, SheetSource,
 } from './types';
@@ -17,6 +21,18 @@ export interface BridgeSheetSourceOptions {
     allowedOrigins?: string[];
     /** Origin to post inbound commands to. Default `'*'`. */
     targetOrigin?: string;
+    /** Opt in to Character API for an exact sheet origin. Requires the actual iframe. */
+    characterApi?: { sheetOrigin: string };
+    /** Opt in to master commands through the authenticated group frame. */
+    roomCharacters?: { sheetOrigin: string };
+}
+
+export interface CharacterBridgeSheetSourceOptions extends BridgeSheetSourceOptions {
+    characterApi: { sheetOrigin: string };
+}
+
+export interface RoomCharacterBridgeSheetSourceOptions extends BridgeSheetSourceOptions {
+    roomCharacters: { sheetOrigin: string };
 }
 
 /**
@@ -34,6 +50,10 @@ const STATE_EVENT_TYPES: ReadonlySet<SheetEvent['type']> = new Set(['lss:manifes
 
 /** Bridge-side source: `onRoll` convenience + full `onEvent` access + inbound `send`. */
 export interface BridgeSheetSource extends SheetSource {
+    /** Available when the source was created with `characterApi`. */
+    readonly character?: CharacterSheetConnection;
+    /** Available when the source was created with `roomCharacters`. */
+    readonly roomCharacters?: RoomCharacterConnection;
     /**
      * Subscribe to every event coming from the sheet. Returns an unsubscribe fn.
      *
@@ -54,6 +74,13 @@ export interface BridgeSheetSource extends SheetSource {
     dispose(): void;
 }
 
+function requireLoadAwareFrame(frame: SheetFrameRef & Partial<CharacterSheetFrame>): CharacterSheetFrame {
+    if (typeof frame.addEventListener !== 'function' || typeof frame.removeEventListener !== 'function') {
+        throw new TypeError('Character API requires an iframe with load listeners');
+    }
+    return frame as CharacterSheetFrame;
+}
+
 /**
  * Bridge-side half of the postMessage transport. Runs in the bridge frame (the
  * VTT extension), listens to the embedded sheet iframe, and delivers typed
@@ -62,10 +89,29 @@ export interface BridgeSheetSource extends SheetSource {
  * `contentWindow` is read live on every message/send, so it survives the sheet
  * iframe navigating or reloading (e.g. Gatsby dev's full-reload on navigation).
  */
+export function createBridgeSheetSource(
+    options: CharacterBridgeSheetSourceOptions & RoomCharacterBridgeSheetSourceOptions,
+): BridgeSheetSource & { readonly character: CharacterSheetConnection; readonly roomCharacters: RoomCharacterConnection };
+export function createBridgeSheetSource(
+    options: RoomCharacterBridgeSheetSourceOptions,
+): BridgeSheetSource & { readonly roomCharacters: RoomCharacterConnection };
+export function createBridgeSheetSource(
+    options: CharacterBridgeSheetSourceOptions,
+): BridgeSheetSource & { readonly character: CharacterSheetConnection };
+export function createBridgeSheetSource(options: BridgeSheetSourceOptions): BridgeSheetSource;
 export function createBridgeSheetSource(options: BridgeSheetSourceOptions): BridgeSheetSource {
     const host = (options.host ?? (typeof window !== 'undefined' ? window as unknown as MessageHost : undefined));
     const targetOrigin = options.targetOrigin ?? '*';
-    const { iframe, allowedOrigins } = options;
+    const { iframe, allowedOrigins, characterApi, roomCharacters } = options;
+    const character = characterApi
+        ? createCharacterSheetConnection({
+            iframe: requireLoadAwareFrame(iframe), sheetOrigin: characterApi.sheetOrigin, host,
+        }, false)
+        : undefined;
+
+    const room = roomCharacters
+        ? createRoomCharacterConnection(requireLoadAwareFrame(iframe), roomCharacters.sheetOrigin)
+        : undefined;
 
     const handlers = new Set<(event: SheetEvent) => void>();
     const lastStateEvents = new Map<SheetEvent['type'], SheetEvent>();
@@ -75,12 +121,20 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
         if ((event.source as unknown) !== (iframe.contentWindow as unknown)) {
             return;
         }
-        // …and, when configured, only from the sheet's origin(s).
-        if (allowedOrigins && !allowedOrigins.includes(event.origin)) {
-            return;
-        }
         const sheetEvent = readEnvelope(event.data);
         if (!sheetEvent) {
+            return;
+        }
+        if (typeof sheetEvent.type === 'string' && sheetEvent.type.startsWith('lss:character-')) {
+            character?.receive(event);
+            return;
+        }
+        if (typeof sheetEvent.type === 'string' && sheetEvent.type.startsWith('lss:room-character-')) {
+            room?.receive(event);
+            return;
+        }
+        // Legacy events honor their configured origins. The command connections check exact origins.
+        if (allowedOrigins && !allowedOrigins.includes(event.origin)) {
             return;
         }
         if (STATE_EVENT_TYPES.has(sheetEvent.type)) {
@@ -100,6 +154,8 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
     };
 
     return {
+        ...(character ? { character: character.connection } : {}),
+        ...(room ? { roomCharacters: room.connection } : {}),
         onRoll(handler: (roll: DiceRollPayload) => void): () => void {
             // No replay reaches this one: rolls are never stored as state.
             return subscribe((event: SheetEvent): void => {
@@ -119,6 +175,8 @@ export function createBridgeSheetSource(options: BridgeSheetSourceOptions): Brid
             return true;
         },
         dispose(): void {
+            character?.connection.dispose();
+            room?.dispose();
             handlers.clear();
             lastStateEvents.clear();
             if (host) {

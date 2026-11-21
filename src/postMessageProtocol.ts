@@ -23,3 +23,11 @@ export function readEnvelope(data: unknown): SheetEvent | null {
     }
     return null;
 }
+
+/** Require a concrete target origin for commands and receipts. */
+export function requireSheetOrigin(sheetOrigin: string): void {
+    const origin = new URL(sheetOrigin);
+    if (origin.origin !== sheetOrigin || (origin.protocol !== 'https:' && origin.protocol !== 'http:')) {
+        throw new TypeError('sheetOrigin must be an exact HTTP(S) origin');
+    }
+}
