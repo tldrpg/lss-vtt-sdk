@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="referrer" content="no-referrer">
         <title>Демо API персонажа · Long Story Short</title>
     </head>
     <body>
@@ -16,18 +17,78 @@
             <nav aria-label="Материалы интегратора">
                 <a href="https://longstoryshort.app/doc/developers/embedding/character-api-demo/">Инструкция</a>
                 <a href="https://github.com/tldrpg/lss-vtt-sdk/tree/master/bridges/character-api-demo">Исходник</a>
+                <button type="button" id="switch-mode">Режим мастера</button>
             </nav>
         </header>
         <main class="workspace">
             <section class="sheet" aria-label="Встроенный лист">
                 <div class="sheet-toolbar">
-                    <p>Войдите в лист, выберите персонажа и разрешите доступ.</p>
-                    <button type="button" id="close">Закрыть лист</button>
-                    <button type="button" id="open" hidden>Открыть лист</button>
+                    <p id="group-status" role="status" data-testid="group-status">Группа не выбрана.</p>
+                    <p id="master-room-status" role="status" data-testid="master-room-status" hidden>Выберите группу мастера.</p>
+                    <div class="toolbar-actions">
+                        <button type="button" id="pick-group" aria-controls="group-picker" aria-expanded="false">Выбрать группу</button>
+                        <button type="button" id="close">Закрыть лист</button>
+                        <button type="button" id="open" hidden>Открыть лист</button>
+                    </div>
                 </div>
+                <section id="group-picker" class="group-picker" aria-label="Выбор группы" hidden>
+                    <div class="toolbar-actions group-toolbar">
+                        <button type="button" id="list-groups">Мои группы</button>
+                        <button type="button" id="create-group">Новая группа</button>
+                        <button type="button" id="close-group-picker">Закрыть выбор</button>
+                    </div>
+                    <div id="group-frame-host"></div>
+                </section>
                 <div id="frame-host" class="frame-host"></div>
+                <div id="master-frame-host" class="frame-host" hidden></div>
             </section>
-            <aside class="panel" aria-label="Панель интеграции">
+            <aside id="player-panel" class="panel" aria-label="Панель интеграции">
+                <section id="token-area" aria-label="Токен" hidden>
+                    <div class="token-board">
+                        <button type="button" id="token" aria-controls="token-catalog" aria-expanded="false">Персонаж</button>
+                    </div>
+                    <div id="token-catalog" class="token-catalog" role="region" aria-labelledby="token-title" hidden>
+                        <div class="section-title">
+                            <h2 id="token-title">Действия персонажа</h2>
+                            <button type="button" id="close-token-catalog">Закрыть действия</button>
+                        </div>
+                        <h3>Атаки</h3>
+                        <p id="attacks-empty" class="muted">В листе нет атак.</p>
+                        <ul id="attacks" class="action-list" role="list" aria-label="Атаки"></ul>
+                        <form id="saving-throw" class="action-row" hidden>
+                            <label for="save-ability">Характеристика</label>
+                            <select id="save-ability">
+                                <option value="str">Сила</option>
+                                <option value="dex">Ловкость</option>
+                                <option value="con">Телосложение</option>
+                                <option value="int">Интеллект</option>
+                                <option value="wis">Мудрость</option>
+                                <option value="cha">Харизма</option>
+                            </select>
+                            <button type="submit">Спасбросок</button>
+                        </form>
+                        <form id="ability-check" class="action-row" hidden>
+                            <label for="check-ability">Характеристика для проверки</label>
+                            <select id="check-ability"></select>
+                            <button type="submit">Проверка характеристики</button>
+                        </form>
+                        <form id="skill-check" class="action-row" hidden>
+                            <label for="check-skill">Навык</label>
+                            <select id="check-skill"></select>
+                            <button type="submit">Проверка навыка</button>
+                        </form>
+                        <div id="initiative" class="action-row" hidden>
+                            <button type="button" id="roll-initiative">Бросок инициативы</button>
+                        </div>
+                        <h3>Заклинания</h3>
+                        <p id="spells-empty" class="muted"></p>
+                        <ul id="spells" class="action-list" role="list" aria-label="Заклинания"></ul>
+                        <section id="resource-section" aria-labelledby="resource-title" hidden>
+                            <h3 id="resource-title">Ресурсы</h3>
+                            <ul id="resources" class="action-list" role="list" aria-label="Ресурсы"></ul>
+                        </section>
+                    </div>
+                </section>
                 <section aria-labelledby="health-title">
                     <h2 id="health-title">Здоровье</h2>
                     <dl class="health">
@@ -64,6 +125,26 @@
                             Лист сообщает <code>applied</code>. После записи приходит <code>saved</code>.
                             Повтор того же ID возвращает <code>saved</code> для той же ревизии.</p>
                     </details>
+                </section>
+            </aside>
+            <aside id="master-panel" class="panel" aria-label="Панель мастера" hidden>
+                <section aria-labelledby="master-actions-title">
+                    <h2 id="master-actions-title">Урон по токену</h2>
+                    <form id="master-actions" class="master-actions">
+                        <label for="master-target">Персонаж группы</label>
+                        <select id="master-target" disabled></select>
+                        <label for="master-amount">Урон</label>
+                        <input id="master-amount" type="number" min="1" step="1" value="8" inputmode="numeric">
+                        <div class="action-row">
+                            <button type="submit" id="master-damage" disabled>Нанести урон</button>
+                            <button type="button" id="master-repeat" disabled>Повторить тот же ID</button>
+                        </div>
+                    </form>
+                </section>
+                <section aria-labelledby="master-log-title">
+                    <h2 id="master-log-title">Журнал команд мастера</h2>
+                    <ol id="master-command-log" data-testid="master-command-log" class="command-log"
+                        aria-label="Команды мастера и ответы" aria-live="polite"></ol>
                 </section>
             </aside>
         </main>
