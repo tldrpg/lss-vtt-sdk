@@ -8,3 +8,12 @@ export { createBridgeSheetSource } from './createBridgeSheetSource';
 export type { BridgeSheetSource, BridgeSheetSourceOptions, SheetFrameRef } from './createBridgeSheetSource';
 export { formatRollMessage, rollVariant } from './formatRoll';
 export type { NotifyVariant } from './formatRoll';
+export type {
+    CharacterAction, CharacterAddress, CharacterSnapshot, CharacterCommand,
+    CharacterWireCommand, CharacterResult, CharacterMessage,
+} from './characterProtocol';
+export { CHARACTER_API_VERSION, isCharacterCommand, packCharacterMessage, parseCharacterMessage } from './characterProtocol';
+export type {
+    CharacterConnectionStatus, CharacterSheetConnection, CharacterSheetFrame, CharacterSheetOptions,
+} from './connectCharacterSheet';
+export { connectCharacterSheet } from './connectCharacterSheet';

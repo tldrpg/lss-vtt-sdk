@@ -25,7 +25,7 @@ export function createSheetClient(options: SheetClientOptions = {}): SheetClient
         return { send: () => {}, onEvent: () => () => {}, dispose: () => {} };
     }
 
-    const handlers = new Set<(event: SheetEvent) => void>();
+    const handlers = new Set<(event: SheetEvent, message: MessageEvent) => void>();
 
     const listener = (event: MessageEvent): void => {
         // Only honor messages from the window we post to (the bridge)…
@@ -40,7 +40,7 @@ export function createSheetClient(options: SheetClientOptions = {}): SheetClient
         if (!sheetEvent) {
             return;
         }
-        handlers.forEach((handler) => handler(sheetEvent));
+        handlers.forEach((handler) => handler(sheetEvent, event));
     };
 
     host.addEventListener('message', listener);
@@ -52,7 +52,7 @@ export function createSheetClient(options: SheetClientOptions = {}): SheetClient
             }
             target.postMessage(wrapEnvelope(event), targetOrigin);
         },
-        onEvent(handler: (event: SheetEvent) => void): () => void {
+        onEvent(handler: (event: SheetEvent, message: MessageEvent) => void): () => void {
             handlers.add(handler);
             return () => { handlers.delete(handler); };
         },

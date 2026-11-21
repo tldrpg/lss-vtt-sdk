@@ -66,7 +66,9 @@ describe('createSheetClient', () => {
 
         h.deliver({ __lssSheetSdk: 2, event: roll });
 
-        expect(handler).toHaveBeenCalledWith(roll);
+        expect(handler).toHaveBeenCalledWith(roll, expect.objectContaining({
+            origin: 'https://bridge.example', source: h.target,
+        }));
     });
 
     it('ignores messages without the protocol marker', () => {

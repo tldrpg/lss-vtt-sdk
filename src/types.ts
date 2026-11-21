@@ -263,8 +263,8 @@ export interface SheetClientOptions {
 export interface SheetClient {
     /** Send an outbound event (e.g. a dice roll or manifest) to the embedding bridge. */
     send(event: SheetEvent): void;
-    /** Subscribe to inbound events/commands from the bridge. Returns an unsubscribe fn. */
-    onEvent(handler: (event: SheetEvent) => void): () => void;
+    /** Subscribe to inbound events and their origin/source. Returns an unsubscribe fn. */
+    onEvent(handler: (event: SheetEvent, message: MessageEvent) => void): () => void;
     /** Remove the inbound listener. */
     dispose(): void;
 }

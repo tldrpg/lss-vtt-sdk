@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Демо API персонажа · Long Story Short</title>
+    </head>
+    <body>
+        <header class="page-header">
+            <div>
+                <h1>Демо API персонажа</h1>
+                <p id="connection-status" role="status" data-testid="connection-status" data-status="connecting">
+                    Подключаем лист…
+                </p>
+            </div>
+            <nav aria-label="Материалы интегратора">
+                <a href="https://longstoryshort.app/doc/developers/embedding/character-api-demo/">Инструкция</a>
+                <a href="https://github.com/tldrpg/lss-vtt-sdk/tree/master/bridges/character-api-demo">Исходник</a>
+            </nav>
+        </header>
+        <main class="workspace">
+            <section class="sheet" aria-label="Встроенный лист">
+                <div class="sheet-toolbar">
+                    <p>Войдите в лист, выберите персонажа и разрешите доступ.</p>
+                    <button type="button" id="close">Закрыть лист</button>
+                    <button type="button" id="open" hidden>Открыть лист</button>
+                </div>
+                <div id="frame-host" class="frame-host"></div>
+            </section>
+            <aside class="panel" aria-label="Панель интеграции">
+                <section aria-labelledby="health-title">
+                    <h2 id="health-title">Здоровье</h2>
+                    <dl class="health">
+                        <div><dt>Текущие HP</dt><dd data-testid="current-hp" id="hp-current">—</dd></div>
+                        <div><dt>Максимум</dt><dd data-testid="max-hp" id="hp-max">—</dd></div>
+                        <div><dt>Временные</dt><dd data-testid="temp-hp" id="hp-temp">—</dd></div>
+                    </dl>
+                    <p class="muted" id="revision">Снимок появится после разрешения доступа.</p>
+                    <div class="services">
+                        <label for="amount">Количество HP</label>
+                        <input id="amount" type="number" min="1" step="1" value="8" inputmode="numeric">
+                        <div class="action-row">
+                            <button type="button" id="damage" disabled>Нанести урон</button>
+                            <button type="button" id="heal" disabled>Вылечить</button>
+                            <button type="button" id="repeat" disabled>Повторить тот же ID</button>
+                        </div>
+                    </div>
+                </section>
+                <section aria-labelledby="log-title">
+                    <div class="section-title">
+                        <h2 id="log-title">Журнал команд</h2>
+                        <button type="button" id="copy">Копировать JSON</button>
+                    </div>
+                    <p class="muted" id="copy-status" role="status" hidden></p>
+                    <p class="muted" id="empty-log">Отправьте команду, чтобы увидеть ответ API.</p>
+                    <ol data-testid="command-log" id="command-log" class="command-log" aria-label="Команды и ответы"></ol>
+                    <details id="json">
+                        <summary>JSON снимка и команд</summary>
+                        <pre id="json-text"></pre>
+                    </details>
+                    <details class="example">
+                        <summary>Пример журнала без входа</summary>
+                        <p>Урон 8 при 10 текущих и 4 временных HP даёт 6 текущих и 0 временных.
+                            Лист сообщает <code>applied</code>. После записи приходит <code>saved</code>.
+                            Повтор того же ID возвращает <code>saved</code> для той же ревизии.</p>
+                    </details>
+                </section>
+            </aside>
+        </main>
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>
