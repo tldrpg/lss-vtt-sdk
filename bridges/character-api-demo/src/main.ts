@@ -443,7 +443,7 @@ function getSheetUrl() {
 function getGroupUrl(mode: 'list' | 'create') {
     const sheetUrl = getSheetUrl();
     const url = new URL(mode === 'list' ? '/iframe/groups/' : '/iframe/group/', sheetUrl);
-    url.searchParams.set('client', sheetUrl.hostname === 'localhost' ? 'dev' : 'owlbear');
+    url.searchParams.set('client', sheetUrl.hostname === 'localhost' ? 'dev' : 'test-bridge');
     return url;
 }
 

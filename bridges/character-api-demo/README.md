@@ -100,4 +100,7 @@ npm run build
 `VITE_SHEET_URL` он открывает лист на `https://longstoryshort.app`. Путь публикации
 добавлен в существующий workflow мостов.
 
+На опубликованном стенде новые группы создаются со слагом `test-bridge`. Прежние группы
+со слагом `owlbear` доступны в том же списке и по прежнему коду. Локальный запуск использует `dev`.
+
 [Инструкция для интеграторов](https://longstoryshort.app/doc/developers/embedding/character-api-demo/)
